@@ -25,7 +25,6 @@ defmodule Getmail do
       init_arg
       |> Keyword.put_new(:port, 993)
       |> Keyword.put_new(:tls, true)
-      |> Keyword.update!(:server, &to_charlist/1)
 
     quote do
       use GenServer
@@ -48,7 +47,7 @@ defmodule Getmail do
 
       @impl true
       def handle_info({socket_kind, _socket, data}, conn) when socket_kind in [:ssl, :tcp] do
-        conn = Getmail.IMAP.handle_reply(conn, data)
+        conn = Getmail.IMAP.handle_message(conn, data)
 
         {:noreply, conn}
       end

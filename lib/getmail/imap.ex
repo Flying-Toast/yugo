@@ -7,6 +7,8 @@ defmodule Getmail.IMAP do
   Opens a connection and logs in. Returns a `Getmail.Conn` struct.
   """
   def open(args) do
+    args = Keyword.update!(args, :server, &to_charlist/1)
+
     {:ok, socket} =
       if args[:tls] do
         :ssl.connect(args[:server], args[:port],
@@ -20,7 +22,7 @@ defmodule Getmail.IMAP do
 
     IO.puts("TODO: IMAP login")
 
-    %Getmail.Conn{tls: args[:tls], socket: socket}
+    %Conn{tls: args[:tls], socket: socket}
   end
 
   @doc """
@@ -38,9 +40,17 @@ defmodule Getmail.IMAP do
   @doc """
   Handles a message from the server. Takes the `Getmail.Conn` and message data, and returns the modified conn.
   """
-  def handle_reply(%Conn{} = conn, data) do
+  def handle_message(%Conn{} = conn, data) do
     IO.puts(data)
 
     conn
+  end
+
+  defp send(%Conn{socket: socket, tls: tls}, data) do
+    if tls do
+      :ok = :ssl.send(socket, data)
+    else
+      :ok = :gen_tcp.send(socket, data)
+    end
   end
 end
