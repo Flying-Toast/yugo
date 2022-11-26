@@ -1,7 +1,5 @@
 defmodule Getmail.IMAP do
-  @moduledoc """
-  Internal module, do not use directly.
-  """
+  @moduledoc false
 
   alias Getmail.Conn
 
@@ -38,7 +36,7 @@ defmodule Getmail.IMAP do
   end
 
   @doc """
-  Handles a message from the server. Takes the `Conn` and message data, and returns the modified conn.
+  Handles a message from the server. Takes the `Getmail.Conn` and message data, and returns the modified conn.
   """
   def handle_reply(%Conn{} = conn, data) do
     IO.puts(data)

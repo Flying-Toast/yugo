@@ -1,21 +1,15 @@
 # Getmail
 
-**TODO: Add description**
+An IMAP library for Elixir.
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `getmail` to your list of dependencies in `mix.exs`:
+# Example
 
 ```elixir
-def deps do
-  [
-    {:getmail, "~> 0.1.0"}
-  ]
+defmodule MyApp.MailHandler do
+  use Getmail, server: "mail.example.com", username: "me@example.com", password: "secret"
+
+  def handle_email(TODO) do
+    TODO
+  end
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/getmail>.
-

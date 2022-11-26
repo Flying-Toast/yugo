@@ -1,6 +1,6 @@
 defmodule Getmail do
   @moduledoc """
-  Documentation for `Getmail`.
+  IMAP client email processing.
   """
 
   @doc """
