@@ -3,6 +3,8 @@ defmodule Getmail.IMAP do
 
   alias Getmail.Conn
 
+  @common_connect_opts [mode: :binary]
+
   @doc """
   Opens a connection and logs in. Returns a `Getmail.Conn` struct.
   """
@@ -11,13 +13,18 @@ defmodule Getmail.IMAP do
 
     {:ok, socket} =
       if args[:tls] do
-        :ssl.connect(args[:server], args[:port],
-          server_name_indication: args[:server],
-          verify: :verify_peer,
-          cacerts: :public_key.cacerts_get()
+        :ssl.connect(
+          args[:server],
+          args[:port],
+          @common_connect_opts ++
+            [
+              server_name_indication: args[:server],
+              verify: :verify_peer,
+              cacerts: :public_key.cacerts_get()
+            ]
         )
       else
-        :gen_tcp.connect(args[:server], args[:port], [])
+        :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
       end
 
     %Conn{tls: args[:tls], socket: socket}
