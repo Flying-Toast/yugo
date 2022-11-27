@@ -32,15 +32,12 @@ defmodule Getmail.IMAP do
   end
 
   @doc """
-  Logs out and closes the connection.
+  Logs out of the IMAP connection.
   """
   def close(%Conn{} = conn) do
     send_command(conn, "LOGOUT")
 
-    if conn.tls do
-      :ok = :ssl.close(conn.socket)
-    end
-    :ok = :gen_tcp.close(conn.socket)
+    # We don't need to close the socket here, because this function is called during the GenServer terminate callback, and so the connected gen_tcp socket will be closed automatically.
   end
 
   @doc """
