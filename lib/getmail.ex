@@ -47,6 +47,7 @@ defmodule Getmail do
 
       @impl true
       def handle_info({socket_kind, _socket, data}, conn) when socket_kind in [:ssl, :tcp] do
+        data = to_string(data)
         conn = Getmail.IMAP.handle_message(conn, data)
 
         {:noreply, conn}

@@ -20,16 +20,15 @@ defmodule Getmail.IMAP do
         :gen_tcp.connect(args[:server], args[:port], [])
       end
 
-    IO.puts("TODO: IMAP login")
-
     %Conn{tls: args[:tls], socket: socket}
+    |> send_command(~s/LOGIN "#{args[:username]}" "#{args[:password]}"/)
   end
 
   @doc """
   Logs out and closes the connection.
   """
   def close(%Conn{} = conn) do
-    IO.puts "TODO: IMAP logout"
+    send_command(conn, "LOGOUT")
 
     if conn.tls do
       :ok = :ssl.close(conn.socket)
@@ -46,11 +45,16 @@ defmodule Getmail.IMAP do
     conn
   end
 
-  defp send(%Conn{socket: socket, tls: tls}, data) do
-    if tls do
-      :ok = :ssl.send(socket, data)
+  defp send_command(%Conn{} = conn, command) do
+    data = "#{conn.next_tag} #{command}\r\n"
+
+    if conn.tls do
+      :ok = :ssl.send(conn.socket, data)
     else
-      :ok = :gen_tcp.send(socket, data)
+      :ok = :gen_tcp.send(conn.socket, data)
     end
+
+    conn
+    |> Map.update!(:next_tag, &(&1 + 1))
   end
 end
