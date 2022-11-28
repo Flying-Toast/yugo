@@ -22,7 +22,8 @@ defmodule Getmail.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :ssl]
+      extra_applications: [:logger, :ssl],
+      mod: {Getmail.Application, []}
     ]
   end
 

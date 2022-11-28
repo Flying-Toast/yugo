@@ -12,8 +12,7 @@ defmodule MailHandler do
   def init() do
     my_filter = Getmail.Filter.all() # allows all email thru
                 |> Getmail.Filter.mailbox("INBOX") # filters down to only messages in inbox
-                |> Getmail.Filter.has_flag(:unseen) # only unseen messages
-                |> Getmail.Filter.select(:subject) # only selects the subject field (not body, attachments, etc)
+                |> Getmail.Filter.lacks_flag(:seen) # only unseen messages
 
     Getmail.subscribe(:my_client, my_filter)
   end
