@@ -22,7 +22,7 @@ defmodule Getmail.IMAPClient do
 
   @impl true
   def init(args) do
-    common_connect_opts = [mode: :binary]
+    common_connect_opts = [packet: :line]
 
     {:ok, socket} =
       if args[:tls] do
