@@ -22,7 +22,7 @@ defmodule Getmail.IMAPClient do
 
   @impl true
   def init(args) do
-    common_connect_opts = [packet: :line]
+    common_connect_opts = [packet: :line, active: :once]
 
     {:ok, socket} =
       if args[:tls] do
@@ -48,5 +48,23 @@ defmodule Getmail.IMAPClient do
   @impl true
   def terminate(_reason, _state) do
     IO.puts("TODO: logout on terminate")
+  end
+
+  @impl true
+  def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
+    #case parse(data) do
+    #  {:error, :expected_more_data} ->
+    #    ==LOOP==
+    #    data.append(:gen_tcp.recv(socket, 0))
+    #    if {:error, :expected_more_data} = parse(data), do: goto ==LOOP==
+    #end
+    IO.puts(data) ###############
+
+    # we set [active: :once] each time so that we can parse packets that might have [non-]synchronizing literals (see above)
+    :ok = :inet.setopts(socket, active: :once)
+
+    #conn = handle_packet(parse(data), conn)
+
+    {:noreply, conn}
   end
 end
