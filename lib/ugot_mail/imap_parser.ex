@@ -3,7 +3,10 @@ defmodule UgotMail.IMAPParser do
 
   IO.puts("TODO: all string()s should be case insensitive!!!!")
 
-  crlf = string("\r\n")
+  sp = ascii_char([?\s])
+  spig = ignore(sp)
+
+  crlf = ignore(string("\r\n"))
 
   char = ascii_char([0x01..0x7F])
 
@@ -111,10 +114,10 @@ defmodule UgotMail.IMAPParser do
 
   capability_data =
     string("CAPABILITY")
-    |> repeat(ascii_char([?\s]) |> concat(capability))
-    |> ascii_char([?\s])
+    |> repeat(sp |> concat(capability))
+    |> concat(sp)
     |> string("IMAP4rev2")
-    |> repeat(ascii_char([?\s]) |> concat(capability))
+    |> repeat(sp |> concat(capability))
 
   nz_number = integer(min: 1)
   nz_number64 = nz_number
@@ -125,7 +128,7 @@ defmodule UgotMail.IMAPParser do
   resp_code_apnd =
     string("APPENDUID ")
     |> concat(nz_number)
-    |> ascii_char([?\s])
+    |> concat(sp)
     |> concat(append_uid)
 
   uid_range =
@@ -146,9 +149,9 @@ defmodule UgotMail.IMAPParser do
   resp_code_copy =
     string("COPYUID ")
     |> concat(nz_number)
-    |> ascii_char([?\s])
+    |> concat(sp)
     |> concat(uid_set)
-    |> ascii_char([?\s])
+    |> concat(sp)
     |> concat(uid_set)
 
   flag_keyword =
@@ -176,7 +179,7 @@ defmodule UgotMail.IMAPParser do
           string("BADCHARSET")
           |> (string(" (")
               |> concat(charset)
-              |> repeat(concat(ascii_char([?\s]), charset))
+              |> repeat(concat(sp, charset))
               |> ascii_char([?)])
               |> optional()),
           capability_data,
@@ -188,7 +191,7 @@ defmodule UgotMail.IMAPParser do
           |> concat(nz_number),
           atom
           |> optional(
-            ascii_char([?\s])
+            sp
             |> (lookahead_not(ascii_char([?]]))
                 |> concat(text_char)
                 |> times(min: 1))
@@ -197,7 +200,7 @@ defmodule UgotMail.IMAPParser do
           |> optional(
             flag_perm
             |> repeat(
-              ascii_char([?\s])
+              sp
               |> concat(flag_perm)
             )
           )
@@ -209,9 +212,10 @@ defmodule UgotMail.IMAPParser do
     ascii_char([?[])
     |> concat(resp_text_code)
     |> ascii_char([?]])
-    |> ascii_char([?\s])
+    |> concat(sp)
     |> optional()
     |> optional(text)
+    |> reduce(:to_string)
 
   resp_cond_state =
     choice([
@@ -219,12 +223,12 @@ defmodule UgotMail.IMAPParser do
       string("NO"),
       string("BAD")
     ])
-    |> ascii_char([?\s])
+    |> concat(spig)
     |> concat(resp_text)
 
   response_tagged =
     tag
-    |> ascii_char([?\s])
+    |> concat(spig)
     |> concat(resp_cond_state)
     |> concat(crlf)
 end
