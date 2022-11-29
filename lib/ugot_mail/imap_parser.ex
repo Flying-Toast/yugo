@@ -115,13 +115,11 @@ defmodule UgotMail.IMAPParser do
       string("AUTH=")
       |> concat(auth_type)
     ])
+    |> reduce(:to_string)
 
   capability_data =
     string("CAPABILITY")
-    |> repeat(sp |> concat(capability))
-    #|> concat(sp)
-    #|> string("IMAP4rev2")
-    #|> repeat(sp |> concat(capability))
+    |> repeat(spig |> concat(capability))
 
   nz_number = integer(min: 1)
   nz_number64 = nz_number
