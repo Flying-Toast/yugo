@@ -219,9 +219,9 @@ defmodule UgotMail.IMAPParser do
 
   resp_cond_state =
     choice([
-      string("OK"),
-      string("NO"),
-      string("BAD")
+      string("OK") |> replace(:ok),
+      string("NO") |> replace(:no),
+      string("BAD") |> replace(:bad)
     ])
     |> concat(spig)
     |> concat(resp_text)
