@@ -1,4 +1,4 @@
-defmodule Getmail.IMAPClient do
+defmodule UgotMail.IMAPClient do
   @moduledoc """
   A persistent connection to an IMAP server.
 
@@ -11,7 +11,7 @@ defmodule Getmail.IMAPClient do
         @impl true
         def start(_type, _args) do
           children = [
-            {Getmail.IMAPClient,
+            {UgotMail.IMAPClient,
              name: :example_client,
              username: "me@example.com",
              password: "pa55w0rd",
@@ -24,7 +24,7 @@ defmodule Getmail.IMAPClient do
   """
 
   use GenServer
-  alias Getmail.Conn
+  alias UgotMail.Conn
 
   @doc """
   Starts an IMAP client process linked to the calling process.
@@ -61,7 +61,7 @@ defmodule Getmail.IMAPClient do
       |> Keyword.put_new(:tls, true)
       |> Keyword.update!(:server, &to_charlist/1)
 
-    name = {:via, Registry, {Getmail.Registry, args[:name]}}
+    name = {:via, Registry, {UgotMail.Registry, args[:name]}}
     GenServer.start_link(__MODULE__, init_arg, name: name)
   end
 

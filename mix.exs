@@ -1,18 +1,18 @@
-defmodule Getmail.MixProject do
+defmodule UgotMail.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :getmail,
+      app: :ugot_mail,
       version: "0.1.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
 
       # Docs
-      name: "Getmail",
-      source_url: "https://github.com/Flying-Toast/getmail",
-      homepage_url: "https://github.com/Flying-Toast/getmail",
+      name: "UgotMail",
+      source_url: "https://github.com/Flying-Toast/ugot_mail",
+      homepage_url: "https://github.com/Flying-Toast/ugot_mail",
       docs: [
         main: "readme",
         extras: ["README.md"]
@@ -23,7 +23,7 @@ defmodule Getmail.MixProject do
   def application do
     [
       extra_applications: [:logger, :ssl],
-      mod: {Getmail.Application, []}
+      mod: {UgotMail.Application, []}
     ]
   end
 

@@ -1,4 +1,4 @@
-defmodule Getmail.Conn do
+defmodule UgotMail.Conn do
   @moduledoc false
 
   @enforce_keys [:tls, :socket]

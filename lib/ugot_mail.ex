@@ -1,3 +1,3 @@
-defmodule Getmail do
+defmodule UgotMail do
   @moduledoc false
 end
