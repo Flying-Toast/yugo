@@ -916,4 +916,6 @@ defmodule UgotMail.IMAPParser do
   response =
     repeat(choice([continue_req, response_data]))
     |> concat(response_done)
+
+  defparsec(:response, response)
 end
