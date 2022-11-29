@@ -95,6 +95,10 @@ defmodule UgotMail.IMAPClient do
     IO.puts("TODO: logout on terminate")
   end
 
+  IO.puts(
+    "TODO: SHOULDN't BE +2 AND MIGHT NOT END IN A \\r\\n!!! MESSAGE WILL ULTIMATELY END WITH \\r\\n BUT MAY HAVE MULTIPLE LITERALS!!"
+  )
+
   @impl true
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
     # detect a synchonizing literal and parse the required number of bytes
