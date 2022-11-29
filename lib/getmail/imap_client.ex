@@ -1,23 +1,67 @@
 defmodule Getmail.IMAPClient do
   @moduledoc """
   A persistent connection to an IMAP server.
+
+  Normally you do not call the functions in this module directly, but rather start an `IMAPClient` as part
+  of your application's supervision tree. For example:
+
+      defmodule MyApp.Application do
+        use Application
+
+        @impl true
+        def start(_type, _args) do
+          children = [
+            {Getmail.IMAPClient,
+             name: :example_client,
+             username: "me@example.com",
+             password: "pa55w0rd",
+             server: "imap.example.com"}
+          ]
+
+          Supervisor.start_link(children, strategy: :one_for_one)
+        end
+      end
   """
 
   use GenServer
   alias Getmail.Conn
 
-  def start_link(opts) do
+  @doc """
+  Starts an IMAP client process linked to the calling process.
+
+  Takes arguments as a keyword list.
+
+  ## Arguments
+
+    * `:username` - Required. Username used to log in.
+
+    * `:password` - Required. Password used to log in.
+
+    * `:name` - Required. A name used to reference this `IMAPClient`. Can be any atom.
+
+    * `:server` - Required. The location of the IMAP server, e.g. `"imap.example.com"`.
+
+    * `:port` - The port to connect to the server via. Defaults to `993`.
+
+    * `:tls` - Whether or not to connect using TLS. Defaults to `true`.
+
+  ## Example
+
+  Normally, you do not call this function directly, but rather run it as part of your application's supervision tree.
+  See the top of this page for example `Application` usage.
+  """
+  def start_link(args) do
     for required <- [:server, :username, :password, :name] do
-      Keyword.has_key?(opts, required) || raise "Missing required argument `:#{required}`."
+      Keyword.has_key?(args, required) || raise "Missing required argument `:#{required}`."
     end
 
     init_arg =
-      opts
+      args
       |> Keyword.put_new(:port, 993)
       |> Keyword.put_new(:tls, true)
       |> Keyword.update!(:server, &to_charlist/1)
 
-    name = {:via, Registry, {Getmail.Registry, opts[:name]}}
+    name = {:via, Registry, {Getmail.Registry, args[:name]}}
     GenServer.start_link(__MODULE__, init_arg, name: name)
   end
 
@@ -53,11 +97,12 @@ defmodule Getmail.IMAPClient do
 
   @impl true
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
+    # detect a synchonizing literal and parse the required number of bytes
     data =
-      # detect a synchonizing literal and parse the required number of bytes
       case Regex.run(~r/\{(\d+)\}\r\n$/, data, capture: :all_but_first) do
         [n] ->
-          n = String.to_integer(n) + 2 # add 2 to account for the final \r\n
+          # add 2 to account for the final \r\n
+          n = String.to_integer(n) + 2
           packet_lines = [data | recv_n_bytes(conn, n)]
           Enum.join(packet_lines)
 

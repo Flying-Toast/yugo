@@ -1,4 +1,3 @@
 defmodule Getmail do
-  @moduledoc """
-  """
+  @moduledoc false
 end
