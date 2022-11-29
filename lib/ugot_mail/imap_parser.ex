@@ -905,4 +905,15 @@ defmodule UgotMail.IMAPParser do
       enable_data
     ])
     |> concat(crlf)
+
+  response_fatal =
+    string("* ")
+    |> concat(resp_cond_bye)
+    |> concat(crlf)
+
+  response_done = choice([response_tagged, response_fatal])
+
+  response =
+    repeat(choice([continue_req, response_data]))
+    |> concat(response_done)
 end
