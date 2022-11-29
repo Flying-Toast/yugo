@@ -304,12 +304,13 @@ defmodule UgotMail.IMAPParser do
   number64 = number
 
   defp n_literal_octets(
-         <<octets::binary-size(num_octets), rest::binary>>,
+         rest,
          [num_octets | acc],
          context,
          line,
          offset
        ) do
+    <<octets::binary-size(num_octets), rest::binary>> = rest
     {rest, [octets | acc], context}
   end
 
@@ -351,7 +352,7 @@ defmodule UgotMail.IMAPParser do
       seq_last_command,
       sequence_set_rept_base
       |> repeat(
-        ascii_char([","])
+        ascii_char([?,])
         |> concat(sequence_set_rept_base)
       )
       |> concat(seq_last_command)
@@ -546,7 +547,7 @@ defmodule UgotMail.IMAPParser do
     )
     |> ascii_char([?)])
 
-  nstring = choice(string_, nil_)
+  nstring = choice([string_, nil_])
 
   addr_name = nstring
 
@@ -619,10 +620,7 @@ defmodule UgotMail.IMAPParser do
       times(digit, 2)
     ])
 
-  date_month =
-    choice([
-      Enum.map(~w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec], &string/1)
-    ])
+  date_month = choice(Enum.map(~w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec], &string/1))
 
   date_year = times(digit, 4)
 
@@ -865,7 +863,7 @@ defmodule UgotMail.IMAPParser do
       |> optional(ascii_char([?<]) |> concat(number) |> ascii_char([?>]))
       |> concat(sp)
       |> concat(nstring),
-      string("BINARY") |> concat(section_binary) |> concat(sp) |> choice(nstring, literal8),
+      string("BINARY") |> concat(section_binary) |> concat(sp) |> choice([nstring, literal8]),
       string("BINARY.SIZE") |> concat(section_binary) |> concat(sp) |> concat(number),
       string("UID ") |> concat(uniqueid)
     ])
