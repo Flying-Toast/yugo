@@ -95,26 +95,11 @@ defmodule UgotMail.IMAPClient do
     IO.puts("TODO: logout on terminate")
   end
 
-  IO.puts(
-    "TODO: SHOULDN't BE +2 AND MIGHT NOT END IN A \\r\\n!!! MESSAGE WILL ULTIMATELY END WITH \\r\\n BUT MAY HAVE MULTIPLE LITERALS!!"
-  )
-
   @impl true
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
-    # detect a synchonizing literal and parse the required number of bytes
-    data =
-      case Regex.run(~r/\{(\d+)\}\r\n$/, data, capture: :all_but_first) do
-        [n] ->
-          # add 2 to account for the final \r\n
-          n = String.to_integer(n) + 2
-          packet_lines = [data | recv_n_bytes(conn, n)]
-          Enum.join(packet_lines)
+    data = recv_literals(conn, [data], 0)
 
-        _ ->
-          data
-      end
-
-    # we set [active: :once] each time so that we can parse packets that have synchronizing literals (see above)
+    # we set [active: :once] each time so that we can parse packets that have synchronizing literals
     :ok =
       if conn.tls do
         :ssl.setopts(socket, active: :once)
@@ -127,8 +112,25 @@ defmodule UgotMail.IMAPClient do
     {:noreply, conn}
   end
 
-  defp recv_n_bytes(%Conn{} = conn, n, acc \\ []) do
-    if n > 0 do
+  # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
+  # have at least 123 bytes. If the line ends with another `{123}`, repeat the process.
+  defp recv_literals(%Conn{} = conn, [prev | _] = acc, n_remaining) do
+    if n_remaining <= 0 do
+      # n_remaining <= 0 - we don't need any more bytes to fulfil the previous literal. We might be done...
+      case Regex.run(~r/\{(\d+)\}\r\n$/, prev, capture: :all_but_first) do
+        [n] ->
+          # ...unless there is another literal.
+          n = String.to_integer(n)
+          recv_literals(conn, acc, n)
+
+        _ ->
+          # The last line didn't end with a literal. The packet is complete.
+          acc
+          |> Enum.reverse()
+          |> Enum.join()
+      end
+    else
+      # we need more bytes to complete the current literal. Recv the next line.
       {:ok, next_line} =
         if conn.tls do
           :ssl.recv(conn.socket, 0)
@@ -136,9 +138,7 @@ defmodule UgotMail.IMAPClient do
           :gen_tcp.recv(conn.socket, 0)
         end
 
-      recv_n_bytes(conn, n - String.length(next_line), [next_line | acc])
-    else
-      Enum.reverse(acc)
+      recv_literals(conn, [next_line | acc], n_remaining - String.length(next_line))
     end
   end
 
