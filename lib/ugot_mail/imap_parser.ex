@@ -119,9 +119,9 @@ defmodule UgotMail.IMAPParser do
   capability_data =
     string("CAPABILITY")
     |> repeat(sp |> concat(capability))
-    |> concat(sp)
-    |> string("IMAP4rev2")
-    |> repeat(sp |> concat(capability))
+    #|> concat(sp)
+    #|> string("IMAP4rev2")
+    #|> repeat(sp |> concat(capability))
 
   nz_number = integer(min: 1)
   nz_number64 = nz_number
@@ -914,8 +914,7 @@ defmodule UgotMail.IMAPParser do
   response_done = choice([response_tagged, response_fatal])
 
   response =
-    repeat(choice([continue_req, response_data]))
-    |> concat(response_done)
+    choice([response_data, continue_req, response_done])
 
   defparsec(:response, response)
 end
