@@ -43,7 +43,14 @@ defmodule Yugo.Client do
 
     * `:port` - The port to connect to the server via. Defaults to `993`.
 
-    * `:tls` - Whether or not to connect using TLS. Defaults to `true`.
+    * `:tls` - Whether or not to connect using TLS. Defaults to `true`. If you set this to `false`,
+    Yugo will make the initial connection without TLS, then upgrade to a TLS connection (using STARTTLS)
+    before logging in. Yugo will never send login credentials over an insecure connection.
+
+    * `:mailbox` - The name of the mailbox ("folder") to monitor for emails. Defaults to `"INBOX"`.
+    The default "INBOX" mailbox is defined in the IMAP standard. If your account has other mailboxes,
+    you can pass the name of one as a string. A single `Client` can only monitor a single mailbox -
+    to monitor multiple mailboxes, you need to start multiple `Client`s.
 
   ## Example
 
@@ -59,6 +66,7 @@ defmodule Yugo.Client do
       args
       |> Keyword.put_new(:port, 993)
       |> Keyword.put_new(:tls, true)
+      |> Keyword.put_new(:mailbox, "INBOX")
       |> Keyword.update!(:server, &to_charlist/1)
 
     name = {:via, Registry, {Yugo.Registry, args[:name]}}
@@ -93,7 +101,8 @@ defmodule Yugo.Client do
       socket: socket,
       server: args[:server],
       username: args[:username],
-      password: args[:password]
+      password: args[:password],
+      mailbox: args[:mailbox]
     }
 
     {:ok, conn}
@@ -184,7 +193,12 @@ defmodule Yugo.Client do
 
   defp on_login_response(conn, :ok, _text) do
     %{conn | state: :authenticated}
-    |> send_command("CAPABILITY")
+    |> send_command("CAPABILITY", &on_authed_capability_response/3)
+  end
+
+  defp on_authed_capability_response(conn, :ok, _text) do
+    conn
+    |> send_command("SELECT #{quote_string(conn.mailbox)}")
   end
 
   defp apply_action(conn, action) do
@@ -227,6 +241,10 @@ defmodule Yugo.Client do
   end
 
   defp quote_string(string) do
+    if Regex.match?(~r/[\r\n]/, string) do
+      raise "string passed to quote_string contains a CR or LF. TODO: support literals"
+    end
+
     string
     |> String.replace("\\", "\\\\")
     |> String.replace(~S("), ~S(\"))

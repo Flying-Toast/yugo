@@ -1,12 +1,13 @@
 defmodule Yugo.Conn do
   @moduledoc false
 
-  @enforce_keys [:tls, :socket, :username, :password, :server]
+  @enforce_keys [:tls, :socket, :username, :password, :server, :mailbox]
   defstruct [
     :tls,
     :socket,
     :server,
     :username,
+    :mailbox,
     # only stored temporarily; gets cleared from memory after sending LOGIN
     :password,
     next_cmd_tag: 0,
