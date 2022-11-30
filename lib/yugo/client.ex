@@ -13,9 +13,11 @@ defmodule Yugo.Client do
           children = [
             {Yugo.Client,
              name: :example_client,
+             server: "imap.example.com",
              username: "me@example.com",
-             password: "pa55w0rd",
-             server: "imap.example.com"}
+             # NOTE: You should not hardcode passwords like this example.
+             # In production, you should probably store/access your password as an environment variable.
+             password: "pa55w0rd"}
           ]
 
           Supervisor.start_link(children, strategy: :one_for_one)
