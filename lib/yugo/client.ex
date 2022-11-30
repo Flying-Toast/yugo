@@ -201,10 +201,14 @@ defmodule Yugo.Client do
 
       {:tagged_response, {tag, :ok, _text}} when tag == conn.login_tag ->
         %{conn | state: :authenticated}
+        |> pop_in([Access.key!(:tag_cmd_map), tag])
+        |> elem(1)
 
       {:tagged_response, {tag, :ok, _text}} when tag == conn.starttls_tag ->
         {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
         %{conn | tls: true, socket: socket}
+        |> pop_in([Access.key!(:tag_cmd_map), tag])
+        |> elem(1)
 
       {:tagged_response, {tag, :ok, _text}} ->
         conn
