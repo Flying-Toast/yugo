@@ -170,13 +170,17 @@ defmodule Yugo.Client do
         conn
         |> send_command("CAPABILITY")
 
-      !conn.tls and "STARTTLS" in conn.capabilities ->
+      !conn.tls ->
         if conn.starttls_tag do
           # we already sent a STARTTLS command, so do nothing
           conn
         else
-          %{conn | starttls_tag: conn.next_cmd_tag}
-          |> send_command("STARTTLS")
+          if "STARTTLS" in conn.capabilities do
+            %{conn | starttls_tag: conn.next_cmd_tag}
+            |> send_command("STARTTLS")
+          else
+            raise "Server does not support STARTTLS as required by RFC3501."
+          end
         end
 
       conn.state == :not_authenticated and conn.login_tag == nil ->
@@ -206,6 +210,7 @@ defmodule Yugo.Client do
 
       {:tagged_response, {tag, :ok, _text}} when tag == conn.starttls_tag ->
         {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
+
         %{conn | tls: true, socket: socket}
         |> pop_in([Access.key!(:tag_cmd_map), tag])
         |> elem(1)
