@@ -68,6 +68,11 @@ defmodule Yugo.Parser do
         [num] = Regex.run(~r/^\[UNSEEN (\d+)\]/i, resp, capture: :all_but_first)
         num = String.to_integer(num)
         [first_unseen: num]
+
+      Regex.match?(~r/^\[UIDVALIDITY /i, resp) ->
+        [num] = Regex.run(~r/^\[UIDVALIDITY (\d+)\]/i, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [uid_validity: num]
     end
   end
 

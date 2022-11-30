@@ -244,6 +244,9 @@ defmodule Yugo.Client do
 
       {:first_unseen, num} ->
         %{conn | first_unseen: num}
+
+      {:uid_validity, num} ->
+        %{conn | uid_validity: num}
     end
   end
 

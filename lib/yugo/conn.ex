@@ -18,6 +18,7 @@ defmodule Yugo.Conn do
     applicable_flags: [],
     num_exists: nil,
     num_recent: nil,
-    first_unseen: nil
+    first_unseen: nil,
+    uid_validity: nil
   ]
 end
