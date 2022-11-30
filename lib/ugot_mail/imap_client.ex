@@ -164,8 +164,7 @@ defmodule UgotMail.IMAPClient do
     cond do
       conn.state == :not_authenticated and conn.login_tag == nil ->
         %{conn | login_tag: conn.next_cmd_tag}
-        # TODO: a proper string-quoting function
-        |> send_command("LOGIN #{conn.username} \"#{conn.password}\"")
+        |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}")
         |> Map.put(:password, "")
 
       conn.state == :authenticated and conn.capabilities == [] ->
@@ -183,11 +182,18 @@ defmodule UgotMail.IMAPClient do
       {:capabilities, caps} ->
         %{conn | capabilities: caps}
 
-      {:tagged_response, {tag, :ok}} when tag == conn.login_tag ->
+      {:tagged_response, {tag, :ok, _text}} when tag == conn.login_tag ->
         %{conn | state: :authenticated}
 
-      {:tagged_response, {tag, :ok}} ->
+      {:tagged_response, {tag, :ok, _text}} ->
         IO.puts("TAG #{tag} COMPLETED OK.")
+        conn
+
+      {:tagged_response, {_tag, status, text}} when status in [:bad, :no] ->
+        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`"
+
+      :continuation ->
+        IO.puts("GOT CONTINUATION")
         conn
     end
   end
@@ -208,5 +214,12 @@ defmodule UgotMail.IMAPClient do
 
     conn
     |> Map.update!(:next_cmd_tag, &(&1 + 1))
+  end
+
+  defp quote_string(string) do
+    string
+    |> String.replace("\\", "\\\\")
+    |> String.replace(~S("), ~S(\"))
+    |> then(&~s("#{&1}"))
   end
 end

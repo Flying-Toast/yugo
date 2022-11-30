@@ -3,6 +3,16 @@ defmodule UgotMail.IMAPParser do
 
   @response_status "(?<resp_status>OK|NO|BAD) (?<resp_text>.*)"
 
+  @doc """
+  Parses a response from the server into a list of "actions".
+
+  "Actions" are terms that specify a change to the client state that happens
+  in response to a certain server event. For example, parsing this "CAPABILITY" response
+  generates a `:capabilities` action:
+
+      iex> UgotMail.IMAPParser.parse_response "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ AUTH=PLAIN"
+      [capabilities: ["IMAP4REV1", "SASL-IR", "LOGIN-REFERRALS", "ID", "ENABLE", "IDLE", "LITERAL+", "AUTH=PLAIN"]]
+  """
   def parse_response(data) when is_binary(data) do
     data = String.replace_suffix(data, "\r\n", "")
 
@@ -10,8 +20,8 @@ defmodule UgotMail.IMAPParser do
       <<"* ", rest::binary>> ->
         parse_untagged(rest)
 
-      <<"+ ", rest::binary>> ->
-        parse_continuation(rest)
+      <<"+ ", _::binary>> ->
+        [:continuation]
 
       _ ->
         parse_tagged(data)
@@ -23,7 +33,7 @@ defmodule UgotMail.IMAPParser do
     caps = Regex.named_captures(~r/^(?<tag>\S+) #{@response_status}/i, resp)
     status = atomize_status_code(caps["resp_status"])
 
-    [tagged_response: {String.to_integer(caps["tag"]), status}]
+    [tagged_response: {String.to_integer(caps["tag"]), status, caps["resp_text"]}]
   end
 
   defp atomize_status_code(code) do
@@ -45,9 +55,5 @@ defmodule UgotMail.IMAPParser do
         |> String.split(" ")
         |> then(&[capabilities: &1])
     end
-  end
-
-  # `resp` has the leading "+ " removed
-  defp parse_continuation(resp) do
   end
 end

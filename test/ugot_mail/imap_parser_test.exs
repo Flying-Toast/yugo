@@ -4,7 +4,8 @@ defmodule UgotMailTest do
   doctest UgotMail.IMAPParser
 
   test "tagged responses" do
-    [tagged_response: {123, :ok}] = Parser.parse_response("123 OK CAPABILITY completed\r\n")
+    [tagged_response: {123, :ok, "CAPABILITY completed"}] =
+      Parser.parse_response("123 OK CAPABILITY completed\r\n")
   end
 
   test "parse capabilities" do
