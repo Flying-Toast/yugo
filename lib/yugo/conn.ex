@@ -11,11 +11,8 @@ defmodule Yugo.Conn do
     :password,
     next_cmd_tag: 0,
     capabilities: [],
-    have_authed_capabilities: false,
     got_server_greeting: false,
     state: :not_authenticated,
-    login_tag: nil,
-    starttls_tag: nil,
-    tag_cmd_map: %{}
+    tag_map: %{}
   ]
 end

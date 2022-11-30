@@ -161,42 +161,30 @@ defmodule Yugo.Client do
     else
       # ignore the first message from the server, which is the unsolicited greeting
       %{conn | got_server_greeting: true}
+      |> send_command("CAPABILITY", &on_unauthed_capability_response/3)
     end
-    |> after_packet()
   end
 
-  defp after_packet(%Conn{} = conn) do
-    cond do
-      conn.state == :not_authenticated and conn.capabilities == [] ->
-        conn
-        |> send_command("CAPABILITY")
-
-      !conn.tls ->
-        if conn.starttls_tag do
-          # we already sent a STARTTLS command, so do nothing
-          conn
-        else
-          if "STARTTLS" in conn.capabilities do
-            %{conn | starttls_tag: conn.next_cmd_tag}
-            |> send_command("STARTTLS")
-          else
-            raise "Server does not support STARTTLS as required by RFC3501."
-          end
-        end
-
-      conn.state == :not_authenticated and conn.login_tag == nil ->
-        %{conn | login_tag: conn.next_cmd_tag}
-        |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}")
-        |> Map.put(:password, "")
-
-      conn.state == :authenticated and not conn.have_authed_capabilities ->
-        %{conn | have_authed_capabilities: true}
-        |> send_command("CAPABILITY")
-
-      true ->
-        IO.inspect("No `after_packet` condition was executed.")
-        conn
+  defp on_unauthed_capability_response(conn, :ok, _text) do
+    if "STARTTLS" in conn.capabilities do
+      conn
+      |> send_command("STARTTLS", &on_starttls_response/3)
+    else
+      raise "Server does not support STARTTLS as required by RFC3501."
     end
+  end
+
+  defp on_starttls_response(conn, :ok, _text) do
+    {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
+
+    %{conn | tls: true, socket: socket}
+    |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}", &on_login_response/3)
+    |> Map.put(:password, "")
+  end
+
+  defp on_login_response(conn, :ok, _text) do
+    %{conn | state: :authenticated}
+    |> send_command("CAPABILITY")
   end
 
   defp apply_action(conn, action) do
@@ -204,25 +192,13 @@ defmodule Yugo.Client do
       {:capabilities, caps} ->
         %{conn | capabilities: caps}
 
-      {:tagged_response, {tag, :ok, _text}} when tag == conn.login_tag ->
-        %{conn | state: :authenticated}
-        |> pop_in([Access.key!(:tag_cmd_map), tag])
-        |> elem(1)
+      {:tagged_response, {tag, status, text}} when status == :ok ->
+        {%{on_response: resp_fn}, conn} = pop_in(conn, [Access.key!(:tag_map), tag])
 
-      {:tagged_response, {tag, :ok, _text}} when tag == conn.starttls_tag ->
-        {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
-
-        %{conn | tls: true, socket: socket}
-        |> pop_in([Access.key!(:tag_cmd_map), tag])
-        |> elem(1)
-
-      {:tagged_response, {tag, :ok, _text}} ->
-        conn
-        |> pop_in([Access.key!(:tag_cmd_map), tag])
-        |> elem(1)
+        resp_fn.(conn, status, text)
 
       {:tagged_response, {tag, status, text}} when status in [:bad, :no] ->
-        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_cmd_map[tag]}`"
+        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
 
       :continuation ->
         IO.puts("GOT CONTINUATION")
@@ -235,7 +211,7 @@ defmodule Yugo.Client do
   defp apply_actions(conn, [action | rest]),
     do: conn |> apply_action(action) |> apply_actions(rest)
 
-  defp send_command(conn, cmd) do
+  defp send_command(conn, cmd, on_response \\ fn (conn, _status, _text) -> conn end) do
     tag = conn.next_cmd_tag
     cmd = "#{tag} #{cmd}\r\n"
 
@@ -247,7 +223,7 @@ defmodule Yugo.Client do
 
     conn
     |> Map.put(:next_cmd_tag, tag + 1)
-    |> put_in([Access.key!(:tag_cmd_map), tag], cmd)
+    |> put_in([Access.key!(:tag_map), tag], %{command: cmd, on_response: on_response})
   end
 
   defp quote_string(string) do
