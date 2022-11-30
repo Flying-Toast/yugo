@@ -241,6 +241,9 @@ defmodule Yugo.Client do
 
       {:num_recent, num} ->
         %{conn | num_recent: num}
+
+      {:first_unseen, num} ->
+        %{conn | first_unseen: num}
     end
   end
 

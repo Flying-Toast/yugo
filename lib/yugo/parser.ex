@@ -63,6 +63,11 @@ defmodule Yugo.Parser do
     cond do
       Regex.match?(~r/^\[PERMANENTFLAGS /i, resp) ->
         []
+
+      Regex.match?(~r/^\[UNSEEN /i, resp) ->
+        [num] = Regex.run(~r/^\[UNSEEN (\d+)\]/i, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [first_unseen: num]
     end
   end
 
