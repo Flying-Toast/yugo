@@ -1,8 +1,6 @@
 defmodule Yugo.Parser do
   @moduledoc false
 
-  @response_status "(?<resp_status>OK|NO|BAD) (?<resp_text>.*)"
-
   @doc """
   Parses a response from the server into a list of "actions".
 
@@ -30,7 +28,7 @@ defmodule Yugo.Parser do
 
   # resp is the rest of the response, after the "<tag> "
   defp parse_tagged(resp) do
-    caps = Regex.named_captures(~r/^(?<tag>\S+) #{@response_status}/i, resp)
+    caps = Regex.named_captures(~r/^(?<tag>\S+) (?<resp_status>OK|NO|BAD) (?<resp_text>.*)/i, resp)
     status = atomize_status_code(caps["resp_status"])
 
     [tagged_response: {String.to_integer(caps["tag"]), status, caps["resp_text"]}]
