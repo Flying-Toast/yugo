@@ -177,11 +177,16 @@ defmodule Yugo.Client do
   end
 
   defp on_unauthed_capability_response(conn, :ok, _text) do
-    if "STARTTLS" in conn.capabilities do
-      conn
-      |> send_command("STARTTLS", &on_starttls_response/3)
+    if !conn.tls do
+      if "STARTTLS" in conn.capabilities do
+        conn
+        |> send_command("STARTTLS", &on_starttls_response/3)
+      else
+        raise "Server does not support STARTTLS as required by RFC3501."
+      end
     else
-      raise "Server does not support STARTTLS as required by RFC3501."
+      conn
+      |> do_login()
     end
   end
 
@@ -189,6 +194,11 @@ defmodule Yugo.Client do
     {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
 
     %{conn | tls: true, socket: socket}
+    |> do_login()
+  end
+
+  defp do_login(conn) do
+    conn
     |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}", &on_login_response/3)
     |> Map.put(:password, "")
   end
