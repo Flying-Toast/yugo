@@ -211,9 +211,19 @@ defmodule Yugo.Client do
     |> send_command("CAPABILITY", &on_authed_capability_response/3)
   end
 
+  defp on_select_response(conn, :ok, text) do
+    conn = %{conn | state: :selected}
+
+    if Regex.match?(~r/^\[READ-ONLY\]/i, text) do
+      %{conn | mailbox_mutability: :read_only}
+    else
+      %{conn | mailbox_mutability: :read_write}
+    end
+  end
+
   defp on_authed_capability_response(conn, :ok, _text) do
     conn
-    |> send_command("SELECT #{quote_string(conn.mailbox)}")
+    |> send_command("SELECT #{quote_string(conn.mailbox)}", &on_select_response/3)
   end
 
   defp apply_action(conn, action) do
