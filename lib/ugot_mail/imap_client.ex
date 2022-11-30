@@ -25,6 +25,7 @@ defmodule UgotMail.IMAPClient do
 
   use GenServer
   alias UgotMail.Conn
+  alias UgotMail.IMAPParser, as: Parser
 
   @doc """
   Starts an IMAP client process linked to the calling process.
@@ -144,6 +145,8 @@ defmodule UgotMail.IMAPClient do
 
   defp handle_packet(data, conn) do
     IO.puts("GOT PACKET: ...#{data}...")
+    actions = Parser.parse_response(data)
+    IO.inspect(actions)
 
     conn
   end
