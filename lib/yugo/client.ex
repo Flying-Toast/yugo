@@ -59,6 +59,16 @@ defmodule Yugo.Client do
   Normally, you do not call this function directly, but rather run it as part of your application's supervision tree.
   See the top of this page for example `Application` usage.
   """
+  @spec start_link(
+          server: String.t(),
+          username: String.t(),
+          password: String.t(),
+          name: atom,
+          port: 1..65535,
+          tls: boolean,
+          mailbox: String.t(),
+          server: String.t()
+        ) :: GenServer.on_start()
   def start_link(args) do
     for required <- [:server, :username, :password, :name] do
       Keyword.has_key?(args, required) || raise "Missing required argument `:#{required}`."
