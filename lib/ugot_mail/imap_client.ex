@@ -108,7 +108,7 @@ defmodule UgotMail.IMAPClient do
         :inet.setopts(socket, active: :once)
       end
 
-    conn = handle_packet(data, conn)
+    %Conn{} = conn = handle_packet(data, conn)
 
     {:noreply, conn}
   end
@@ -144,10 +144,49 @@ defmodule UgotMail.IMAPClient do
   end
 
   defp handle_packet(data, conn) do
-    IO.puts("GOT PACKET: ...#{data}...")
-    actions = Parser.parse_response(data)
-    IO.inspect(actions)
+    if conn.got_server_greeting do
+      actions = Parser.parse_response(data)
+
+      conn
+      |> apply_actions(actions)
+    else
+      # ignore the first message from the server, which is the unsolicited greeting
+      %{conn | got_server_greeting: true}
+    end
+    |> after_packet()
+  end
+
+  defp after_packet(conn) do
+    cond do
+      conn.capabilities == [] ->
+        conn
+        |> send_command("CAPABILITY")
+    end
+    |> dbg()
+  end
+
+  defp apply_action(conn, action) do
+    case action do
+      {:capabilities, caps} ->
+        %{conn | capabilities: caps}
+    end
+  end
+
+  defp apply_actions(conn, []), do: conn
+
+  defp apply_actions(conn, [action | rest]),
+    do: conn |> apply_action(action) |> apply_actions(rest)
+
+  defp send_command(conn, cmd) do
+    cmd = "#{conn.next_cmd_tag} #{cmd}\r\n"
+
+    if conn.tls do
+      :ssl.send(conn.socket, cmd)
+    else
+      :gen_tcp.send(conn.socket, cmd)
+    end
 
     conn
+    |> Map.update!(:next_cmd_tag, &(&1 + 1))
   end
 end
