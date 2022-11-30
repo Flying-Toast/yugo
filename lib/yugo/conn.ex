@@ -15,6 +15,7 @@ defmodule Yugo.Conn do
     got_server_greeting: false,
     state: :not_authenticated,
     tag_map: %{},
-    applicable_flags: []
+    applicable_flags: [],
+    num_exists: 0
   ]
 end

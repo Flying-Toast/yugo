@@ -60,6 +60,7 @@ defmodule Yugo.Parser do
   end
 
   defp parse_untagged_with_status(resp, :ok) do
+    dbg resp
   end
 
   defp parse_untagged_no_status(resp) do
@@ -77,6 +78,14 @@ defmodule Yugo.Parser do
         String.split(flagstring, " ")
         |> Enum.map(&String.upcase/1)
         |> then(&[applicable_flags: &1])
+
+      Regex.match?(~r/^\d+ EXISTS/i, resp) ->
+        [num] = Regex.run(~r/^(\d+) /, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [num_exists: num]
+
+      true ->
+        raise "Unparseable response: #{inspect(resp)}"
     end
   end
 end
