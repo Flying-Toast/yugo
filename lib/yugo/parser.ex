@@ -59,6 +59,8 @@ defmodule Yugo.Parser do
     end
   end
 
+  # TODO: find an elegant way to do parse_untagged_[with/without]_status without all the duplication
+
   defp parse_untagged_with_status(resp, :ok) do
     cond do
       Regex.match?(~r/^\[PERMANENTFLAGS \(/i, resp) ->
@@ -77,6 +79,11 @@ defmodule Yugo.Parser do
         [num] = Regex.run(~r/^\[UIDVALIDITY (\d+)\]/i, resp, capture: :all_but_first)
         num = String.to_integer(num)
         [uid_validity: num]
+
+      Regex.match?(~r/^\[UIDNEXT /i, resp) ->
+        [num] = Regex.run(~r/^\[UIDNEXT (\d+)\]/i, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [uid_next: num]
     end
   end
 
@@ -101,7 +108,6 @@ defmodule Yugo.Parser do
         num = String.to_integer(num)
         [num_exists: num]
 
-      # TODO: refactor this duplication with EXISTS parsing
       Regex.match?(~r/^\d+ RECENT/i, resp) ->
         [num] = Regex.run(~r/^(\d+) /, resp, capture: :all_but_first)
         num = String.to_integer(num)

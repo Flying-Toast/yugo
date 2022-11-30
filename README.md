@@ -1,3 +1,3 @@
 # Yugo
 
-Yugo is an easy and high-level IMAP library for Elixir.
+Yugo is an easy and high-level IMAP client library for Elixir.

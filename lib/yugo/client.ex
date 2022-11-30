@@ -250,6 +250,9 @@ defmodule Yugo.Client do
 
       {:uid_validity, num} ->
         %{conn | uid_validity: num}
+
+      {:uid_next, num} ->
+        %{conn | uid_next: num}
     end
   end
 

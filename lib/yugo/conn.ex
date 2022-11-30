@@ -20,6 +20,7 @@ defmodule Yugo.Conn do
     num_exists: nil,
     num_recent: nil,
     first_unseen: nil,
-    uid_validity: nil
+    uid_validity: nil,
+    uid_next: nil
   ]
 end
