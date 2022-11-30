@@ -65,28 +65,33 @@ defmodule Yugo.Client do
     GenServer.start_link(__MODULE__, init_arg, name: name)
   end
 
+  @common_connect_opts [packet: :line, active: :once, mode: :binary]
+
+  defp ssl_opts(server),
+    do:
+      [
+        server_name_indication: server,
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get()
+      ] ++ @common_connect_opts
+
   @impl true
   def init(args) do
-    common_connect_opts = [packet: :line, active: :once, mode: :binary]
-
     {:ok, socket} =
       if args[:tls] do
         :ssl.connect(
           args[:server],
           args[:port],
-          [
-            server_name_indication: args[:server],
-            verify: :verify_peer,
-            cacerts: :public_key.cacerts_get()
-          ] ++ common_connect_opts
+          ssl_opts(args[:server])
         )
       else
-        :gen_tcp.connect(args[:server], args[:port], common_connect_opts)
+        :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
       end
 
     conn = %Conn{
       tls: args[:tls],
       socket: socket,
+      server: args[:server],
       username: args[:username],
       password: args[:password]
     }
@@ -159,15 +164,28 @@ defmodule Yugo.Client do
     |> after_packet()
   end
 
-  defp after_packet(conn) do
+  defp after_packet(%Conn{} = conn) do
     cond do
+      conn.state == :not_authenticated and conn.capabilities == [] ->
+        conn
+        |> send_command("CAPABILITY")
+
+      !conn.tls and "STARTTLS" in conn.capabilities ->
+        if conn.starttls_tag do
+          # we already sent a STARTTLS command, so do nothing
+          conn
+        else
+          %{conn | starttls_tag: conn.next_cmd_tag}
+          |> send_command("STARTTLS")
+        end
+
       conn.state == :not_authenticated and conn.login_tag == nil ->
         %{conn | login_tag: conn.next_cmd_tag}
         |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}")
         |> Map.put(:password, "")
 
-      conn.state == :authenticated and conn.capabilities == [] ->
-        conn
+      conn.state == :authenticated and not conn.have_authed_capabilities ->
+        %{conn | have_authed_capabilities: true}
         |> send_command("CAPABILITY")
 
       true ->
@@ -183,6 +201,10 @@ defmodule Yugo.Client do
 
       {:tagged_response, {tag, :ok, _text}} when tag == conn.login_tag ->
         %{conn | state: :authenticated}
+
+      {:tagged_response, {tag, :ok, _text}} when tag == conn.starttls_tag ->
+        {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
+        %{conn | tls: true, socket: socket}
 
       {:tagged_response, {tag, :ok, _text}} ->
         conn
