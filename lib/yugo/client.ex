@@ -100,8 +100,9 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def terminate(_reason, _state) do
-    IO.puts("TODO: logout on terminate")
+  def terminate(_reason, conn) do
+    conn
+    |> send_command("LOGOUT")
   end
 
   @impl true
