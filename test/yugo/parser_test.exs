@@ -1,7 +1,7 @@
-defmodule UgotMailTest do
+defmodule YugoTest do
   use ExUnit.Case
-  alias UgotMail.IMAPParser, as: Parser
-  doctest UgotMail.IMAPParser
+  alias Yugo.Parser
+  doctest Yugo.Parser
 
   test "tagged responses" do
     [tagged_response: {123, :ok, "CAPABILITY completed"}] =

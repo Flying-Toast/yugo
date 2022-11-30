@@ -20,7 +20,7 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-ugot_mail-*.tar
+yugo-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/

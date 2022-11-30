@@ -1,4 +1,4 @@
-defmodule UgotMail.Application do
+defmodule Yugo.Application do
   @moduledoc false
 
   use Application
@@ -6,7 +6,7 @@ defmodule UgotMail.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {Registry, keys: :unique, name: UgotMail.Registry}
+      {Registry, keys: :unique, name: Yugo.Registry}
     ]
 
     opts = [strategy: :one_for_one]

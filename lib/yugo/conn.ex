@@ -1,4 +1,4 @@
-defmodule UgotMail.Conn do
+defmodule Yugo.Conn do
   @moduledoc false
 
   @enforce_keys [:tls, :socket, :username, :password]

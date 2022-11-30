@@ -1,3 +1,3 @@
-defmodule UgotMail do
+defmodule Yugo do
   @moduledoc false
 end

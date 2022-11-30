@@ -1,8 +1,8 @@
-defmodule UgotMail.IMAPClient do
+defmodule Yugo.Client do
   @moduledoc """
   A persistent connection to an IMAP server.
 
-  Normally you do not call the functions in this module directly, but rather start an `IMAPClient` as part
+  Normally you do not call the functions in this module directly, but rather start a `Client` as part
   of your application's supervision tree. For example:
 
       defmodule MyApp.Application do
@@ -11,7 +11,7 @@ defmodule UgotMail.IMAPClient do
         @impl true
         def start(_type, _args) do
           children = [
-            {UgotMail.IMAPClient,
+            {Yugo.Client,
              name: :example_client,
              username: "me@example.com",
              password: "pa55w0rd",
@@ -24,8 +24,7 @@ defmodule UgotMail.IMAPClient do
   """
 
   use GenServer
-  alias UgotMail.Conn
-  alias UgotMail.IMAPParser, as: Parser
+  alias Yugo.{Conn, Parser}
 
   @doc """
   Starts an IMAP client process linked to the calling process.
@@ -38,7 +37,7 @@ defmodule UgotMail.IMAPClient do
 
     * `:password` - Required. Password used to log in.
 
-    * `:name` - Required. A name used to reference this `IMAPClient`. Can be any atom.
+    * `:name` - Required. A name used to reference this `Client`. Can be any atom.
 
     * `:server` - Required. The location of the IMAP server, e.g. `"imap.example.com"`.
 
@@ -62,7 +61,7 @@ defmodule UgotMail.IMAPClient do
       |> Keyword.put_new(:tls, true)
       |> Keyword.update!(:server, &to_charlist/1)
 
-    name = {:via, Registry, {UgotMail.Registry, args[:name]}}
+    name = {:via, Registry, {Yugo.Registry, args[:name]}}
     GenServer.start_link(__MODULE__, init_arg, name: name)
   end
 
@@ -104,7 +103,7 @@ defmodule UgotMail.IMAPClient do
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
     data = recv_literals(conn, [data], 0)
 
-    # we set [active: :once] each time so that we can parse packets that have synchronizing literals
+    # we set [active: :once] each time so that we can parse packets that have synchronizing literals spanning over multiple lines
     :ok =
       if conn.tls do
         :ssl.setopts(socket, active: :once)

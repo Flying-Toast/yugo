@@ -1,4 +1,4 @@
-defmodule UgotMail.IMAPParser do
+defmodule Yugo.Parser do
   @moduledoc false
 
   @response_status "(?<resp_status>OK|NO|BAD) (?<resp_text>.*)"
@@ -10,7 +10,7 @@ defmodule UgotMail.IMAPParser do
   in response to a certain server event. For example, parsing this "CAPABILITY" response
   generates a `:capabilities` action:
 
-      iex> UgotMail.IMAPParser.parse_response "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ AUTH=PLAIN"
+      iex> Yugo.Parser.parse_response "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ AUTH=PLAIN"
       [capabilities: ["IMAP4REV1", "SASL-IR", "LOGIN-REFERRALS", "ID", "ENABLE", "IDLE", "LITERAL+", "AUTH=PLAIN"]]
   """
   def parse_response(data) when is_binary(data) do
