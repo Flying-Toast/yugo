@@ -23,7 +23,7 @@ defmodule UgotMail.IMAPParser do
     caps = Regex.named_captures(~r/^(?<tag>\S+) #{@response_status}/i, resp)
     status = atomize_status_code(caps["resp_status"])
 
-    {:tagged, %{tag: caps["tag"], status: status, text: caps["resp_text"]}}
+    [tagged_response: {String.to_integer(caps["tag"]), status}]
   end
 
   defp atomize_status_code(code) do

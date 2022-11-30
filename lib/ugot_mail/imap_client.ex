@@ -85,9 +85,13 @@ defmodule UgotMail.IMAPClient do
         :gen_tcp.connect(args[:server], args[:port], common_connect_opts)
       end
 
-    IO.puts("TODO: login on init")
+    conn = %Conn{
+      tls: args[:tls],
+      socket: socket,
+      username: args[:username],
+      password: args[:password]
+    }
 
-    conn = %Conn{tls: args[:tls], socket: socket}
     {:ok, conn}
   end
 
@@ -158,17 +162,33 @@ defmodule UgotMail.IMAPClient do
 
   defp after_packet(conn) do
     cond do
-      conn.capabilities == [] ->
+      conn.state == :not_authenticated and conn.login_tag == nil ->
+        %{conn | login_tag: conn.next_cmd_tag}
+        # TODO: a proper string-quoting function
+        |> send_command("LOGIN #{conn.username} \"#{conn.password}\"")
+        |> Map.put(:password, "")
+
+      conn.state == :authenticated and conn.capabilities == [] ->
         conn
         |> send_command("CAPABILITY")
+
+      true ->
+        IO.inspect("No `after_packet` condition was executed.")
+        conn
     end
-    |> dbg()
   end
 
   defp apply_action(conn, action) do
     case action do
       {:capabilities, caps} ->
         %{conn | capabilities: caps}
+
+      {:tagged_response, {tag, :ok}} when tag == conn.login_tag ->
+        %{conn | state: :authenticated}
+
+      {:tagged_response, {tag, :ok}} ->
+        IO.puts("TAG #{tag} COMPLETED OK.")
+        conn
     end
   end
 
