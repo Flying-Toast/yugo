@@ -194,8 +194,18 @@ defmodule Yugo.Client do
     if conn.got_server_greeting do
       actions = Parser.parse_response(data)
 
+      conn =
+        if conn.idling and actions != [:continuation] do
+          cancel_idle(conn)
+          IO.puts("TODO: process the new messages")
+        else
+          conn
+        end
+
       conn
       |> apply_actions(actions)
+      # maybe_idle is the last thing we do!!
+      |> maybe_idle()
     else
       # ignore the first message from the server, which is the unsolicited greeting
       %{conn | got_server_greeting: true}
@@ -251,20 +261,33 @@ defmodule Yugo.Client do
     else
       %{conn | mailbox_mutability: :read_write}
     end
-    |> start_monitoring()
+    |> maybe_noop_poll()
   end
 
   defp command_in_progress?(conn), do: conn.tag_map != %{}
 
-  # IDLEs if the server supports IDLE, otherwise does NOOP polls
-  defp start_monitoring(conn) do
-    #if "IDLE" in conn.capabilities do
-    #  # TODO
-    #  conn
-    #else
-    send(self(), :poll_with_noop)
+  # starts NOOP polling unless the server supports IDLE
+  defp maybe_noop_poll(conn) do
+    unless "IDLE" in conn.capabilities do
+      send(self(), :poll_with_noop)
+    end
+
     conn
-    #end
+  end
+
+  # IDLEs if there is no command in progress, we're not already idling, and the server supports IDLE
+  defp maybe_idle(conn) do
+    if "IDLE" in conn.capabilities and not command_in_progress?(conn) and not conn.idling do
+      %{conn | idling: true}
+      |> send_command("IDLE")
+    else
+      conn
+    end
+  end
+
+  defp cancel_idle(conn) do
+    %{conn | idling: false}
+    |> send_raw("DONE\r\n")
   end
 
   defp apply_action(conn, action) do
@@ -312,17 +335,21 @@ defmodule Yugo.Client do
   defp apply_actions(conn, [action | rest]),
     do: conn |> apply_action(action) |> apply_actions(rest)
 
+  defp send_raw(conn, stuff) do
+    if conn.tls do
+      :ssl.send(conn.socket, stuff)
+    else
+      :gen_tcp.send(conn.socket, stuff)
+    end
+
+    conn
+  end
+
   defp send_command(conn, cmd, on_response \\ fn conn, _status, _text -> conn end) do
     tag = conn.next_cmd_tag
     cmd = "#{tag} #{cmd}\r\n"
 
-    if conn.tls do
-      :ssl.send(conn.socket, cmd)
-    else
-      :gen_tcp.send(conn.socket, cmd)
-    end
-
-    conn
+    send_raw(conn, cmd)
     |> Map.put(:next_cmd_tag, tag + 1)
     |> put_in([Access.key!(:tag_map), tag], %{command: cmd, on_response: on_response})
   end
