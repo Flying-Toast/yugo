@@ -159,6 +159,15 @@ defmodule Yugo.Client do
     {:noreply, conn}
   end
 
+  @idle_timeout 1000 * 60 * 27
+  @impl true
+  def handle_info(:idle_timeout, conn) do
+    conn =
+      %{conn | idle_timed_out: true}
+      |> cancel_idle()
+
+    {:noreply, conn}
+  end
 
   # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
   # have at least 123 bytes. If the line ends with another `{123}`, repeat the process.
@@ -275,18 +284,29 @@ defmodule Yugo.Client do
     conn
   end
 
+  defp on_idle_response(conn, :ok, _text) do
+    if conn.idle_timed_out do
+      maybe_idle(conn)
+    else
+      conn
+    end
+  end
+
   # IDLEs if there is no command in progress, we're not already idling, and the server supports IDLE
   defp maybe_idle(conn) do
     if "IDLE" in conn.capabilities and not command_in_progress?(conn) and not conn.idling do
-      %{conn | idling: true}
-      |> send_command("IDLE")
+      timer = Process.send_after(self(), :idle_timeout, @idle_timeout)
+      %{conn | idling: true, idle_timer: timer, idle_timed_out: false}
+      |> send_command("IDLE", &on_idle_response/3)
     else
       conn
     end
   end
 
   defp cancel_idle(conn) do
-    %{conn | idling: false}
+    Process.cancel_timer(conn.idle_timer)
+
+    %{conn | idling: false, idle_timer: nil}
     |> send_raw("DONE\r\n")
   end
 
