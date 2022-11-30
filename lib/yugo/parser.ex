@@ -60,7 +60,10 @@ defmodule Yugo.Parser do
   end
 
   defp parse_untagged_with_status(resp, :ok) do
-    dbg resp
+    cond do
+      Regex.match?(~r/^\[PERMANENTFLAGS /i, resp) ->
+        []
+    end
   end
 
   defp parse_untagged_no_status(resp) do
@@ -83,6 +86,12 @@ defmodule Yugo.Parser do
         [num] = Regex.run(~r/^(\d+) /, resp, capture: :all_but_first)
         num = String.to_integer(num)
         [num_exists: num]
+
+      # TODO: refactor this duplication with EXISTS parsing
+      Regex.match?(~r/^\d+ RECENT/i, resp) ->
+        [num] = Regex.run(~r/^(\d+) /, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [num_recent: num]
 
       true ->
         raise "Unparseable response: #{inspect(resp)}"

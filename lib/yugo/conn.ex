@@ -16,6 +16,7 @@ defmodule Yugo.Conn do
     state: :not_authenticated,
     tag_map: %{},
     applicable_flags: [],
-    num_exists: 0
+    num_exists: 0,
+    num_recent: 0
   ]
 end

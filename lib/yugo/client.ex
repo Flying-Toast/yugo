@@ -238,6 +238,9 @@ defmodule Yugo.Client do
 
       {:num_exists, num} ->
         %{conn | num_exists: num}
+
+      {:num_recent, num} ->
+        %{conn | num_recent: num}
     end
   end
 
