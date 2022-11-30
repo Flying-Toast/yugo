@@ -61,8 +61,12 @@ defmodule Yugo.Parser do
 
   defp parse_untagged_with_status(resp, :ok) do
     cond do
-      Regex.match?(~r/^\[PERMANENTFLAGS /i, resp) ->
-        []
+      Regex.match?(~r/^\[PERMANENTFLAGS \(/i, resp) ->
+        [flagstring] = Regex.run(~r/^\[PERMANENTFLAGS \((.*)\)\]/i, resp, capture: :all_but_first)
+
+        String.split(flagstring, " ")
+        |> Enum.map(&String.upcase/1)
+        |> then(&[permanent_flags: &1])
 
       Regex.match?(~r/^\[UNSEEN /i, resp) ->
         [num] = Regex.run(~r/^\[UNSEEN (\d+)\]/i, resp, capture: :all_but_first)
@@ -86,7 +90,7 @@ defmodule Yugo.Parser do
         |> then(&[capabilities: &1])
 
       Regex.match?(~r/^FLAGS /i, resp) ->
-        [flagstring] = Regex.run(~r/^FLAGS \((.*)\)$/i, resp, capture: :all_but_first)
+        [flagstring] = Regex.run(~r/^FLAGS \((.*)\)/i, resp, capture: :all_but_first)
 
         String.split(flagstring, " ")
         |> Enum.map(&String.upcase/1)

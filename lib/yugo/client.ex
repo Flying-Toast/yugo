@@ -236,6 +236,9 @@ defmodule Yugo.Client do
       {:applicable_flags, flags} ->
         %{conn | applicable_flags: flags}
 
+      {:permanent_flags, flags} ->
+        %{conn | permanent_flags: flags}
+
       {:num_exists, num} ->
         %{conn | num_exists: num}
 
