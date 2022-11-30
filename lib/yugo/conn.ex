@@ -28,6 +28,7 @@ defmodule Yugo.Conn do
           mailbox_mutability: :read_only | :read_write
         }
 
+  @derive {Inspect, except: [:password]}
   @enforce_keys [:tls, :socket, :username, :password, :server, :mailbox]
   defstruct [
     :tls,

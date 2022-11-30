@@ -143,6 +143,23 @@ defmodule Yugo.Client do
     {:noreply, conn}
   end
 
+  @noop_poll_interval 5000
+  @impl true
+  def handle_info(:poll_with_noop, conn) do
+    Process.send_after(self(), :poll_with_noop, @noop_poll_interval)
+
+    conn =
+      if command_in_progress?(conn) do
+        conn
+      else
+        conn
+        |> send_command("NOOP")
+      end
+
+    {:noreply, conn}
+  end
+
+
   # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
   # have at least 123 bytes. If the line ends with another `{123}`, repeat the process.
   defp recv_literals(%Conn{} = conn, [prev | _] = acc, n_remaining) do
@@ -221,6 +238,11 @@ defmodule Yugo.Client do
     |> send_command("CAPABILITY", &on_authed_capability_response/3)
   end
 
+  defp on_authed_capability_response(conn, :ok, _text) do
+    conn
+    |> send_command("SELECT #{quote_string(conn.mailbox)}", &on_select_response/3)
+  end
+
   defp on_select_response(conn, :ok, text) do
     conn = %{conn | state: :selected}
 
@@ -229,11 +251,20 @@ defmodule Yugo.Client do
     else
       %{conn | mailbox_mutability: :read_write}
     end
+    |> start_monitoring()
   end
 
-  defp on_authed_capability_response(conn, :ok, _text) do
+  defp command_in_progress?(conn), do: conn.tag_map != %{}
+
+  # IDLEs if the server supports IDLE, otherwise does NOOP polls
+  defp start_monitoring(conn) do
+    #if "IDLE" in conn.capabilities do
+    #  # TODO
+    #  conn
+    #else
+    send(self(), :poll_with_noop)
     conn
-    |> send_command("SELECT #{quote_string(conn.mailbox)}", &on_select_response/3)
+    #end
   end
 
   defp apply_action(conn, action) do
