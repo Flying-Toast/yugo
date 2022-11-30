@@ -8,8 +8,8 @@ defmodule Yugo.Parser do
   in response to a certain server event. For example, parsing this "CAPABILITY" response
   generates a `:capabilities` action:
 
-      iex> Yugo.Parser.parse_response "* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ AUTH=PLAIN"
-      [capabilities: ["IMAP4REV1", "SASL-IR", "LOGIN-REFERRALS", "ID", "ENABLE", "IDLE", "LITERAL+", "AUTH=PLAIN"]]
+      iex(2)> Yugo.Parser.parse_response ~S|* FLAGS (\Answered \Flagged \Deleted \Seen \Draft)|
+      [applicable_flags: ["\\ANSWERED", "\\FLAGGED", "\\DELETED", "\\SEEN", "\\DRAFT"]]
   """
   def parse_response(data) when is_binary(data) do
     data = String.replace_suffix(data, "\r\n", "")
@@ -41,12 +41,28 @@ defmodule Yugo.Parser do
       "ok" -> :ok
       "no" -> :no
       "bad" -> :bad
+      "preauth" -> :preauth
+      "bye" -> :bye
     end
   end
 
   # `resp` has the leading "* " removed
   # returns a keyword list of actions
   defp parse_untagged(resp) do
+    case Regex.run(~r/^(OK|NO|BAD|PREAUTH|BYE) (.*)$/i, resp, capture: :all_but_first) do
+      [status, rest_of_packet] ->
+        status = atomize_status_code(status)
+        parse_untagged_with_status(rest_of_packet, status)
+
+      nil ->
+        parse_untagged_no_status(resp)
+    end
+  end
+
+  defp parse_untagged_with_status(resp, :ok) do
+  end
+
+  defp parse_untagged_no_status(resp) do
     cond do
       Regex.match?(~r/^CAPABILITY /i, resp) ->
         resp
@@ -54,6 +70,13 @@ defmodule Yugo.Parser do
         |> String.replace_prefix("CAPABILITY ", "")
         |> String.split(" ")
         |> then(&[capabilities: &1])
+
+      Regex.match?(~r/^FLAGS /i, resp) ->
+        [flagstring] = Regex.run(~r/^FLAGS \((.*)\)$/i, resp, capture: :all_but_first)
+
+        String.split(flagstring, " ")
+        |> Enum.map(&String.upcase/1)
+        |> then(&[applicable_flags: &1])
     end
   end
 end

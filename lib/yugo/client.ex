@@ -199,7 +199,10 @@ defmodule Yugo.Client do
 
   defp do_login(conn) do
     conn
-    |> send_command("LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}", &on_login_response/3)
+    |> send_command(
+      "LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}",
+      &on_login_response/3
+    )
     |> Map.put(:password, "")
   end
 
@@ -229,6 +232,9 @@ defmodule Yugo.Client do
       :continuation ->
         IO.puts("GOT CONTINUATION")
         conn
+
+      {:applicable_flags, flags} ->
+        %{conn | applicable_flags: flags}
     end
   end
 
@@ -237,7 +243,7 @@ defmodule Yugo.Client do
   defp apply_actions(conn, [action | rest]),
     do: conn |> apply_action(action) |> apply_actions(rest)
 
-  defp send_command(conn, cmd, on_response \\ fn (conn, _status, _text) -> conn end) do
+  defp send_command(conn, cmd, on_response \\ fn conn, _status, _text -> conn end) do
     tag = conn.next_cmd_tag
     cmd = "#{tag} #{cmd}\r\n"
 
