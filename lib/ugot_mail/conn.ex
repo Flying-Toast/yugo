@@ -12,6 +12,7 @@ defmodule UgotMail.Conn do
     capabilities: [],
     got_server_greeting: false,
     state: :not_authenticated,
-    login_tag: nil
+    login_tag: nil,
+    tag_cmd_map: %{}
   ]
 end

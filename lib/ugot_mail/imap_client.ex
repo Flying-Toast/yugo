@@ -186,11 +186,12 @@ defmodule UgotMail.IMAPClient do
         %{conn | state: :authenticated}
 
       {:tagged_response, {tag, :ok, _text}} ->
-        IO.puts("TAG #{tag} COMPLETED OK.")
         conn
+        |> pop_in([Access.key!(:tag_cmd_map), tag])
+        |> elem(1)
 
-      {:tagged_response, {_tag, status, text}} when status in [:bad, :no] ->
-        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`"
+      {:tagged_response, {tag, status, text}} when status in [:bad, :no] ->
+        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_cmd_map[tag]}`"
 
       :continuation ->
         IO.puts("GOT CONTINUATION")
@@ -204,7 +205,8 @@ defmodule UgotMail.IMAPClient do
     do: conn |> apply_action(action) |> apply_actions(rest)
 
   defp send_command(conn, cmd) do
-    cmd = "#{conn.next_cmd_tag} #{cmd}\r\n"
+    tag = conn.next_cmd_tag
+    cmd = "#{tag} #{cmd}\r\n"
 
     if conn.tls do
       :ssl.send(conn.socket, cmd)
@@ -213,7 +215,8 @@ defmodule UgotMail.IMAPClient do
     end
 
     conn
-    |> Map.update!(:next_cmd_tag, &(&1 + 1))
+    |> Map.put(:next_cmd_tag, tag + 1)
+    |> put_in([Access.key!(:tag_cmd_map), tag], cmd)
   end
 
   defp quote_string(string) do
