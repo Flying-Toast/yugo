@@ -29,13 +29,14 @@ defmodule Yugo.MsgAttParser do
   end
 
   defp address_to_tuple([display_name, mailbox, host]) do
-    unquoted = cond do
-      mailbox == nil or host == nil ->
-        raise "nil address"
+    unquoted =
+      cond do
+        mailbox == nil or host == nil ->
+          raise "nil address"
 
-      true ->
-       "#{mailbox}@#{host}"
-    end
+        true ->
+          "#{mailbox}@#{host}"
+      end
 
     {display_name, unquoted}
   end
