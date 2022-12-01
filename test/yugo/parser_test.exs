@@ -63,13 +63,13 @@ defmodule Yugo.ParserTest do
              {nil, "minutes@cnri.reston.va.us"},
              {"John Klensin", "klensin@mit.edu"}
            ],
-           date: ["Wed, 17 Jul 1996 02:23:25 -0700 (PDT)"],
+           date: "Wed, 17 Jul 1996 02:23:25 -0700 (PDT)",
            from: [{"Terry Gray", "gray@cac.washington.edu"}],
-           in_reply_to: [nil],
-           message_id: ["<B27397-0100000@cac.washington.edu>"],
+           in_reply_to: nil,
+           message_id: "<B27397-0100000@cac.washington.edu>",
            reply_to: [{"Terry Gray", "gray@cac.washington.edu"}],
            sender: [{"Terry Gray", "gray@cac.washington.edu"}],
-           subject: ["IMAP4rev1 WG mtg summary and minutes"],
+           subject: "IMAP4rev1 WG mtg summary and minutes",
            to: [nil: "imap@cac.washington.edu"]
          }}
     ] =

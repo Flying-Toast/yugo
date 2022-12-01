@@ -152,9 +152,9 @@ defmodule Yugo.MsgAttParser do
 
   envelope_value =
     ignore(ascii_char([?(]))
-    |> tag(nstring, :date)
+    |> unwrap_and_tag(nstring, :date)
     |> ignore(ascii_char([?\s]))
-    |> tag(nstring, :subject)
+    |> unwrap_and_tag(nstring, :subject)
     |> ignore(ascii_char([?\s]))
     |> tag(address_list, :from)
     |> ignore(ascii_char([?\s]))
@@ -168,9 +168,9 @@ defmodule Yugo.MsgAttParser do
     |> ignore(ascii_char([?\s]))
     |> tag(address_list, :bcc)
     |> ignore(ascii_char([?\s]))
-    |> tag(nstring, :in_reply_to)
+    |> unwrap_and_tag(nstring, :in_reply_to)
     |> ignore(ascii_char([?\s]))
-    |> tag(nstring, :message_id)
+    |> unwrap_and_tag(nstring, :message_id)
     |> ignore(ascii_char([?)]))
     |> reduce({Enum, :into, [%{}]})
 
