@@ -470,6 +470,8 @@ defmodule Yugo.Client do
 
       {:fetch, {seq_num, :flags, flags}} ->
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          flags = Parser.system_flags_to_atoms(flags)
+
           conn
           |> put_in([Access.key!(:unprocessed_messages), seq_num, :flags], flags)
         else

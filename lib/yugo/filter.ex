@@ -45,7 +45,13 @@ defmodule Yugo.Filter do
 
   @doc false
   def accepts?(%__MODULE__{} = filter, message) do
-    true
+    Enum.all?([
+      !filter.subject_regex || Regex.match?(filter.subject_regex, message.envelope.subject),
+      !filter.sender_regex || Regex.match?(filter.sender_regex, message.envelope.sender),
+      filter.has_flags == [] || Enum.all?(filter.has_flags, &Enum.member?(message.flags, &1)),
+      filter.lacks_flags == [] ||
+        Enum.all?(filter.lacks_flags, &(!Enum.member?(message.flags, &1)))
+    ])
   end
 
   @doc """

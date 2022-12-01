@@ -3,6 +3,18 @@ defmodule Yugo.Parser do
 
   require Logger
 
+  def system_flags_to_atoms(flags) do
+    for flag <- flags do
+      case String.upcase(flag) do
+        "\\SEEN" -> :seen
+        "\\ANSWERED" -> :answered
+        "\\FLAGGED" -> :flagged
+        "\\DRAFT" -> :draft
+        "\\DELETED" -> :deleted
+      end
+    end
+  end
+
   @doc """
   Parses a response from the server into a list of "actions".
 
