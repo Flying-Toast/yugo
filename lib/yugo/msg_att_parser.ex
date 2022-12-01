@@ -93,7 +93,21 @@ defmodule Yugo.MsgAttParser do
     |> integer(min: 1)
     |> unwrap_and_tag(:rfc822_size)
 
-  # "FLAGS" SP "(" [flag-fetch *(SP flag-fetch)] ")"
+  flag_name =
+    ascii_char([not: ?\s, not: ?)])
+    |> times(min: 1)
+    |> reduce(:to_string)
+
+  flags =
+    att_name("FLAGS")
+    |> ignore(ascii_char([?(]))
+    |> optional(
+      flag_name
+      |> repeat(ascii_char([?\s]) |> ignore() |> concat(flag_name))
+    )
+    |> ignore(ascii_char([?)]))
+    |> tag(:flags)
+
   # "ENVELOPE" SP envelope / "INTERNALDATE" SP date-time /
   # "BODY" SP body /
   # "BODYSTRUCTURE" SP body /
@@ -104,7 +118,8 @@ defmodule Yugo.MsgAttParser do
       rfc822_header,
       rfc822,
       rfc822_text,
-      rfc822_size
+      rfc822_size,
+      flags
     ])
 
   defparsec :msg_atts,
