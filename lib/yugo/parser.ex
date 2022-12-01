@@ -124,9 +124,22 @@ defmodule Yugo.Parser do
         num = String.to_integer(num)
         [expunge: num]
 
+      Regex.match?(~r/^\d+ FETCH /i, resp) ->
+        [seqnum, fetchdata] = Regex.run(~r/^(\d+) FETCH \((.*)\)$/i, resp, capture: :all_but_first)
+        seqnum = String.to_integer(seqnum)
+
+        parse_msg_atts(fetchdata)
+        |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
+
       true ->
         Logger.info(~s([Yugo] didn't parse response: "* #{inspect(resp)}"))
         []
     end
+  end
+
+  # parses the <msg-att> from the RFC's APRS, minus the outer parenthesis
+  defp parse_msg_atts(data) do
+    {:ok, parsed, _, _, _, _} = Yugo.MsgAttParser.msg_atts(data)
+    parsed
   end
 end
