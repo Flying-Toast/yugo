@@ -333,8 +333,39 @@ defmodule Yugo.Client do
   end
 
   defp process_messages(conn) do
-    IO.puts("We need to process these messages: #{inspect(conn.unprocessed_messages)}")
+    if command_in_progress?(conn) do
+      conn
+    else
+      process_earliest_message(conn)
+    end
+  end
+
+  defp process_earliest_message(conn) do
+    {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+
+    if msg[:fetched] do
+      conn
+      |> release_message(seqnum)
+    else
+      conn
+      |> fetch_message(seqnum)
+    end
+  end
+
+  # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
+  defp release_message(conn, seqnum) do
+    {{_, msg}, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
+    # TODO: Send to matching filters
+    IO.puts("sending #{inspect msg} to matching filters")
     conn
+  end
+
+  # FETCHes the message attributes needed to apply filters
+  defp fetch_message(conn, seqnum) do
+    conn
+    |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
+    # TODO: only fetch what is needed by filters
+    |> send_command(IO.inspect "FETCH #{seqnum} FLAGS")
   end
 
   defp apply_action(conn, action) do
