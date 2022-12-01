@@ -60,8 +60,8 @@ defmodule Yugo.ParserTest do
          %{
            bcc: [nil],
            cc: [
-             {nil, "minutes@CNRI.Reston.VA.US"},
-             {"John Klensin", "KLENSIN@MIT.EDU"}
+             {nil, "minutes@cnri.reston.va.us"},
+             {"John Klensin", "klensin@mit.edu"}
            ],
            date: ["Wed, 17 Jul 1996 02:23:25 -0700 (PDT)"],
            from: [{"Terry Gray", "gray@cac.washington.edu"}],
