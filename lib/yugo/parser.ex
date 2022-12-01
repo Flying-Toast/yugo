@@ -1,6 +1,8 @@
 defmodule Yugo.Parser do
   @moduledoc false
 
+  require Logger
+
   @doc """
   Parses a response from the server into a list of "actions".
 
@@ -84,6 +86,10 @@ defmodule Yugo.Parser do
         [num] = Regex.run(~r/^\[UIDNEXT (\d+)\]/i, resp, capture: :all_but_first)
         num = String.to_integer(num)
         [uid_next: num]
+
+      true ->
+        Logger.info(~s([Yugo] didn't parse response: "* OK #{inspect(resp)}"))
+        []
     end
   end
 
@@ -119,7 +125,8 @@ defmodule Yugo.Parser do
         [expunge: num]
 
       true ->
-        raise "Unparseable response: #{inspect(resp)}"
+        Logger.info(~s([Yugo] didn't parse response: "* #{inspect(resp)}"))
+        []
     end
   end
 end
