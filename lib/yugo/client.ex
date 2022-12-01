@@ -205,8 +205,8 @@ defmodule Yugo.Client do
 
       conn =
         if conn.idling and actions != [:continuation] do
-          cancel_idle(conn)
-          IO.puts("TODO: process the new messages")
+          conn
+          |> cancel_idle()
         else
           conn
         end
