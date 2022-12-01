@@ -28,7 +28,23 @@ defmodule Yugo.MsgAttParser do
   import Yugo.MsgAttParser.Helpers, only: [anycase_string: 1, att_name: 1]
   import NimbleParsec
 
-  literal = string(IO.inspect"TODO: literals")
+  defp n_literal_octets(
+         rest,
+         [num_octets | acc],
+         context,
+         line,
+         offset
+       ) do
+    <<octets::binary-size(num_octets), rest::binary>> = rest
+    {rest, [octets | acc], context}
+  end
+
+  literal =
+    ignore(ascii_char([?{]))
+    |> integer(min: 1)
+    |> ignore(string("}\r\n"))
+    |> post_traverse({:n_literal_octets, []})
+
   quoted =
     ignore(ascii_char([?"]))
     |> repeat(
