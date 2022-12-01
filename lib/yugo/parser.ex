@@ -113,6 +113,11 @@ defmodule Yugo.Parser do
         num = String.to_integer(num)
         [num_recent: num]
 
+      Regex.match?(~r/^\d+ EXPUNGE/i, resp) ->
+        [num] = Regex.run(~r/^(\d+) /, resp, capture: :all_but_first)
+        num = String.to_integer(num)
+        [expunge: num]
+
       true ->
         raise "Unparseable response: #{inspect(resp)}"
     end

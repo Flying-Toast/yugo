@@ -225,10 +225,17 @@ defmodule Yugo.Client do
           conn
         end
 
-      conn
-      |> apply_actions(actions)
-      # maybe_idle is the last thing we do!!
-      |> maybe_idle()
+      conn =
+        conn
+        |> apply_actions(actions)
+
+      if conn.unprocessed_messages == %{} do
+        conn
+        |> maybe_idle()
+      else
+        conn
+        |> process_messages()
+      end
     else
       # ignore the first message from the server, which is the unsolicited greeting
       %{conn | got_server_greeting: true}
@@ -325,6 +332,11 @@ defmodule Yugo.Client do
     |> send_raw("DONE\r\n")
   end
 
+  defp process_messages(conn) do
+    IO.puts("We need to process these messages: #{inspect(conn.unprocessed_messages)}")
+    conn
+  end
+
   defp apply_action(conn, action) do
     case action do
       {:capabilities, caps} ->
@@ -339,7 +351,6 @@ defmodule Yugo.Client do
         raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
 
       :continuation ->
-        IO.puts("GOT CONTINUATION")
         conn
 
       {:applicable_flags, flags} ->
@@ -349,6 +360,20 @@ defmodule Yugo.Client do
         %{conn | permanent_flags: flags}
 
       {:num_exists, num} ->
+        conn =
+          if conn.num_exists < num do
+            %{
+              conn
+              | unprocessed_messages:
+                  Map.merge(
+                    Map.from_keys(Enum.to_list((conn.num_exists + 1)..num), %{}),
+                    conn.unprocessed_messages
+                  )
+            }
+          else
+            conn
+          end
+
         %{conn | num_exists: num}
 
       {:num_recent, num} ->
@@ -362,6 +387,15 @@ defmodule Yugo.Client do
 
       {:uid_next, num} ->
         %{conn | uid_next: num}
+
+      {:expunge, _seq_num} ->
+        %{
+          conn
+          | num_exists: conn.num_exists - 1,
+            unprocessed_messages:
+              Enum.map(conn.unprocessed_messages, fn {k, v} -> {k - 1, v} end)
+              |> Map.new()
+        }
     end
   end
 
