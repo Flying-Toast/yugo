@@ -35,7 +35,7 @@ defmodule Yugo.MsgAttParser do
           raise "nil address"
 
         true ->
-          "#{mailbox}@#{host}"
+          String.downcase("#{mailbox}@#{host}")
       end
 
     {display_name, unquoted}
