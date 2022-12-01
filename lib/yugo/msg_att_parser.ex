@@ -22,7 +22,7 @@ defmodule Yugo.MsgAttParser do
   import Yugo.MsgAttParser.Helpers, only: [anycase_string: 1, att_name: 1]
   import NimbleParsec
 
-  defp to_upcased_string(x) do
+  def to_upcased_string(x) do
     x
     |> to_string()
     |> String.upcase()

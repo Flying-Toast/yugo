@@ -354,7 +354,7 @@ defmodule Yugo.Client do
 
   # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
   defp release_message(conn, seqnum) do
-    {{_, msg}, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
+    {msg, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
     # TODO: Send to matching filters
     IO.puts("sending #{inspect(msg)} to matching filters")
     conn
@@ -437,6 +437,14 @@ defmodule Yugo.Client do
               end)
               |> Map.new()
         }
+
+      {:fetch, {seq_num, :flags, flags}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :flags], flags)
+        else
+          conn
+        end
     end
   end
 
