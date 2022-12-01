@@ -15,10 +15,10 @@ defmodule Yugo.Filter do
         |> Filter.lacks_flag(:answered)
   """
 
-  # :deleted and :recent are purposely omitted because they are too low-level
-  @legal_flag_atoms [:seen, :answered, :flagged, :draft]
+  # :recent is purposely omitted because it is too low-level
+  @legal_flag_atoms [:seen, :answered, :flagged, :draft, :deleted]
 
-  @type flag :: :seen | :answered | :flagged | :draft
+  @type flag :: :seen | :answered | :flagged | :draft | :deleted
 
   @type t :: %__MODULE__{
           has_flags: [flag],
@@ -50,6 +50,8 @@ defmodule Yugo.Filter do
     * `:flagged` - Message is "flagged" for urgent/special attention.
 
     * `:draft` - Message has not completed composition (marked as a draft).
+
+    * `:deleted` - Message is "deleted". In most email clients, this means it was moved to the trash folder.
   """
   @spec has_flag(__MODULE__.t(), flag) :: __MODULE__.t()
   def has_flag(%__MODULE__{} = filter, flag) when flag in @legal_flag_atoms do
