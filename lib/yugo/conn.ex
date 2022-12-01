@@ -30,7 +30,8 @@ defmodule Yugo.Conn do
           idle_timer: reference | nil,
           idle_timed_out: boolean,
           filters: [{Yugo.Filter.t(), pid}],
-          unprocessed_messages: %{integer: %{}}
+          unprocessed_messages: %{integer: %{}},
+          attrs_needed_by_filters: String.t()
         }
 
   @derive {Inspect, except: [:password]}
@@ -60,6 +61,7 @@ defmodule Yugo.Conn do
     idle_timer: nil,
     idle_timed_out: false,
     filters: [],
-    unprocessed_messages: %{}
+    unprocessed_messages: %{},
+    attrs_needed_by_filters: ""
   ]
 end

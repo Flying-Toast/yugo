@@ -26,7 +26,7 @@ defmodule Yugo.Client do
   """
 
   use GenServer
-  alias Yugo.{Conn, Parser}
+  alias Yugo.{Conn, Parser, Filter}
 
   @type name :: term
 
@@ -130,12 +130,18 @@ defmodule Yugo.Client do
 
   @impl true
   def handle_cast({:subscribe, pid, filter}, conn) do
-    {:noreply, %{conn | filters: [{filter, pid} | conn.filters]}}
+    conn =
+      %{conn | filters: [{filter, pid} | conn.filters]}
+      |> update_attrs_needed_by_filters()
+
+    {:noreply, conn}
   end
 
   @impl true
   def handle_cast({:unsubscribe, pid}, conn) do
-    conn = %{conn | filters: Enum.reject(conn.filters, &(elem(&1, 1) == pid))}
+    conn =
+      %{conn | filters: Enum.reject(conn.filters, &(elem(&1, 1) == pid))}
+      |> update_attrs_needed_by_filters()
 
     {:noreply, conn}
   end
@@ -181,6 +187,18 @@ defmodule Yugo.Client do
       |> cancel_idle()
 
     {:noreply, conn}
+  end
+
+  defp update_attrs_needed_by_filters(conn) do
+    attrs =
+      [
+        Enum.any?(conn.filters, &Filter.needs_flags?(&1)) && "FLAGS",
+        Enum.any?(conn.filters, &Filter.needs_envelope?(&1)) && "ENVELOPE"
+      ]
+      |> Enum.reject(&(&1 == false))
+      |> Enum.join(" ")
+
+    %{conn | attrs_needed_by_filters: attrs}
   end
 
   # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
@@ -362,10 +380,16 @@ defmodule Yugo.Client do
 
   # FETCHes the message attributes needed to apply filters
   defp fetch_message(conn, seqnum) do
-    conn
-    |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
-    # TODO: only fetch what is needed by filters
-    |> send_command(IO.inspect("FETCH #{seqnum} FLAGS"))
+    conn =
+      conn
+      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
+
+    if conn.attrs_needed_by_filters == [] do
+      conn
+    else
+      conn
+      |> send_command("FETCH #{seqnum} (#{conn.attrs_needed_by_filters})")
+    end
   end
 
   defp apply_action(conn, action) do

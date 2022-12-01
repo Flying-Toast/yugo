@@ -33,6 +33,16 @@ defmodule Yugo.Filter do
             subject_regex: nil,
             sender_regex: nil
 
+  @doc false
+  def needs_envelope?(%__MODULE__{} = filter) do
+    filter.subject_regex != nil || filter.sender_regex != nil
+  end
+
+  @doc false
+  def needs_flags?(%__MODULE__{} = filter) do
+    filter.has_flags != [] || filter.lacks_flags != []
+  end
+
   @doc """
   Returns a [`Filter`](`Yugo.Filter`) that accepts all emails.
   """
@@ -107,7 +117,8 @@ defmodule Yugo.Filter do
   """
   @spec subject_matches(__MODULE__.t(), Regex.t()) :: __MODULE__.t()
   def subject_matches(%__MODULE__{} = filter, pattern) when is_struct(pattern, Regex) do
-    filter.subject_regex == nil || raise "This filter already has a subject match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
+    filter.subject_regex == nil ||
+      raise "This filter already has a subject match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
 
     %{filter | subject_regex: pattern}
   end
@@ -117,16 +128,17 @@ defmodule Yugo.Filter do
 
   ## Example
 
-  Construct a filter that only accepts emails sent from "peter@example.com" and "alex@example.com":
 
       alias Yugo.Filter
 
+      # make a filter that only accepts emails sent from "peter@example.com" or "alex@example.com"
       Filter.all()
       |> Filter.sender_matches(~r/(peter|alex)@example.com/i)
   """
   @spec sender_matches(__MODULE__.t(), Regex.t()) :: __MODULE__.t()
   def sender_matches(%__MODULE__{} = filter, pattern) when is_struct(pattern, Regex) do
-    filter.sender_regex == nil || raise "This filter already has a sender match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
+    filter.sender_regex == nil ||
+      raise "This filter already has a sender match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
 
     %{filter | sender_regex: pattern}
   end
