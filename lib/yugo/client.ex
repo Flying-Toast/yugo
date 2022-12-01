@@ -296,6 +296,7 @@ defmodule Yugo.Client do
   defp maybe_idle(conn) do
     if "IDLE" in conn.capabilities and not command_in_progress?(conn) and not conn.idling do
       timer = Process.send_after(self(), :idle_timeout, @idle_timeout)
+
       %{conn | idling: true, idle_timer: timer, idle_timed_out: false}
       |> send_command("IDLE", &on_idle_response/3)
     else

@@ -66,7 +66,7 @@ defmodule Yugo.Parser do
       Regex.match?(~r/^\[PERMANENTFLAGS \(/i, resp) ->
         [flagstring] = Regex.run(~r/^\[PERMANENTFLAGS \((.*)\)\]/i, resp, capture: :all_but_first)
 
-        String.split(flagstring, " ")
+        String.split(flagstring, " ", trim: true)
         |> Enum.map(&String.upcase/1)
         |> then(&[permanent_flags: &1])
 
@@ -93,13 +93,13 @@ defmodule Yugo.Parser do
         resp
         |> String.upcase()
         |> String.replace_prefix("CAPABILITY ", "")
-        |> String.split(" ")
+        |> String.split(" ", trim: true)
         |> then(&[capabilities: &1])
 
       Regex.match?(~r/^FLAGS /i, resp) ->
         [flagstring] = Regex.run(~r/^FLAGS \((.*)\)/i, resp, capture: :all_but_first)
 
-        String.split(flagstring, " ")
+        String.split(flagstring, " ", trim: true)
         |> Enum.map(&String.upcase/1)
         |> then(&[applicable_flags: &1])
 
