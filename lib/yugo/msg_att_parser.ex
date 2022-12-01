@@ -164,7 +164,7 @@ defmodule Yugo.MsgAttParser do
     |> ignore(ascii_char([?\s]))
     |> tag(nstring, :message_id)
     |> ignore(ascii_char([?)]))
-    |> tag(:envelope_value)
+    |> reduce({Enum, :into, [%{}]})
 
   envelope =
     att_name("ENVELOPE")
