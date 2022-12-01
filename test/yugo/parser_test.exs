@@ -45,13 +45,11 @@ defmodule Yugo.ParserTest do
     [uid_validity: 3_857_529_045] =
       Parser.parse_response("* OK [UIDVALIDITY 3857529045] UIDs valid\r\n")
 
-    [uid_next: 4392] =
-      Parser.parse_response("* OK [UIDNEXT 4392] Predicted next UID\r\n")
+    [uid_next: 4392] = Parser.parse_response("* OK [UIDNEXT 4392] Predicted next UID\r\n")
 
     [applicable_flags: ["\\ANSWERED", "\\FLAGGED", "\\DELETED", "\\SEEN", "\\DRAFT"]] =
       Parser.parse_response("* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)\r\n")
 
-    [applicable_flags: []] =
-      Parser.parse_response("* FLAGS () nope no flags\r\n")
+    [applicable_flags: []] = Parser.parse_response("* FLAGS () nope no flags\r\n")
   end
 end

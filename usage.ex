@@ -11,7 +11,6 @@ defmodule MailHandler do
 
   def init() do
     my_filter = Yugo.Filter.all() # allows all email thru
-                |> Yugo.Filter.mailbox("INBOX") # filters down to only messages in inbox
                 |> Yugo.Filter.lacks_flag(:seen) # only unseen messages
 
     Yugo.subscribe(:my_client, my_filter)
