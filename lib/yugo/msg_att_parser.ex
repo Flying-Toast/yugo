@@ -29,8 +29,15 @@ defmodule Yugo.MsgAttParser do
   end
 
   defp address_to_tuple([display_name, mailbox, host]) do
-    IO.puts("TODO: unquote according to RFC2822")
-    {display_name, "#{mailbox}@#{host}"}
+    unquoted = cond do
+      mailbox == nil or host == nil ->
+        raise "nil address"
+
+      true ->
+       "#{mailbox}@#{host}"
+    end
+
+    {display_name, unquoted}
   end
 
   defp n_literal_octets(
