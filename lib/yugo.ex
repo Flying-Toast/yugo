@@ -28,7 +28,7 @@ defmodule Yugo do
   end
 
   @doc """
-  Unsubscribes the calling process from the specified [`Client`](`Yugo.Client).
+  Unsubscribes the calling process from the specified [`Client`](`Yugo.Client`).
 
   This will unsubscribe the calling process from all messages from the client,
   regardless of how many separate times you [`subscribe`d](`subscribe/2`)

@@ -5,7 +5,7 @@ defmodule Yugo.Filter do
 
   ## Example
 
-  To create a filter that only accepts emails that have been read and not replied to:
+  To create a filter that only accepts emails that have been read and not replied to, and whose subject contains "Order Information":
 
       alias Yugo.Filter
 
@@ -13,6 +13,7 @@ defmodule Yugo.Filter do
         Filter.all()
         |> Filter.has_flag(:seen)
         |> Filter.lacks_flag(:answered)
+        |> Filter.subject_matches(~r/Order Information/)
   """
 
   # :recent is purposely omitted because it is too low-level
@@ -22,11 +23,15 @@ defmodule Yugo.Filter do
 
   @type t :: %__MODULE__{
           has_flags: [flag],
-          lacks_flags: [flag]
+          lacks_flags: [flag],
+          subject_regex: nil | Regex.t(),
+          sender_regex: nil | Regex.t()
         }
 
   defstruct has_flags: [],
-            lacks_flags: []
+            lacks_flags: [],
+            subject_regex: nil,
+            sender_regex: nil
 
   @doc """
   Returns a [`Filter`](`Yugo.Filter`) that accepts all emails.
@@ -95,5 +100,34 @@ defmodule Yugo.Filter do
     else
       %{filter | lacks_flags: [flag | filter.lacks_flags]}
     end
+  end
+
+  @doc """
+  Accepts emails whose "subject" line matches the given `Regex`.
+  """
+  @spec subject_matches(__MODULE__.t(), Regex.t()) :: __MODULE__.t()
+  def subject_matches(%__MODULE__{} = filter, pattern) when is_struct(pattern, Regex) do
+    filter.subject_regex == nil || raise "This filter already has a subject match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
+
+    %{filter | subject_regex: pattern}
+  end
+
+  @doc """
+  Accepts emails where the email address of the sender matches the given `Regex`.
+
+  ## Example
+
+  Construct a filter that only accepts emails sent from "peter@example.com" and "alex@example.com":
+
+      alias Yugo.Filter
+
+      Filter.all()
+      |> Filter.sender_matches(~r/(peter|alex)@example.com/i)
+  """
+  @spec sender_matches(__MODULE__.t(), Regex.t()) :: __MODULE__.t()
+  def sender_matches(%__MODULE__{} = filter, pattern) when is_struct(pattern, Regex) do
+    filter.sender_regex == nil || raise "This filter already has a sender match constraint. Filters can only have one of these constraints - to match multiple things, use regex OR patterns."
+
+    %{filter | sender_regex: pattern}
   end
 end
