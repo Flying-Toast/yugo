@@ -28,16 +28,7 @@ defmodule Yugo.MsgAttParser do
   import Yugo.MsgAttParser.Helpers, only: [anycase_string: 1, att_name: 1]
   import NimbleParsec
 
-  #"FLAGS" SP "(" [flag-fetch *(SP flag-fetch)] ")"
-  #"ENVELOPE" SP envelope / "INTERNALDATE" SP date-time /
-  #"RFC822.HEADER" SP nstring /
-  #"RFC822.SIZE" SP number /
-  #"RFC822" SP nstring /
-  #"BODYSTRUCTURE" SP body /
-  #"BODY" SP body /
-  #"BODY" section ["<" number ">"] SP nstring /
-
-  literal = string("TODO")
+  literal = string(IO.inspect"TODO: literals")
   quoted =
     ignore(ascii_char([?"]))
     |> repeat(
@@ -71,10 +62,33 @@ defmodule Yugo.MsgAttParser do
     |> concat(nstring)
     |> unwrap_and_tag(:rfc822_header)
 
+  rfc822 =
+    att_name("RFC822")
+    |> concat(nstring)
+    |> unwrap_and_tag(:rfc822)
+
+  rfc822_text =
+    att_name("RFC822.TEXT")
+    |> concat(nstring)
+    |> unwrap_and_tag(:rfc822_text)
+
+  rfc822_size =
+    att_name("RFC822.SIZE")
+    |> integer(min: 1)
+    |> unwrap_and_tag(:rfc822_size)
+
+  # "FLAGS" SP "(" [flag-fetch *(SP flag-fetch)] ")"
+  # "ENVELOPE" SP envelope / "INTERNALDATE" SP date-time /
+  # "BODY" SP body /
+  # "BODYSTRUCTURE" SP body /
+  # "BODY" section ["<" number ">"] SP nstring /
   msg_att =
     choice([
       uid,
-      rfc822_header
+      rfc822_header,
+      rfc822,
+      rfc822_text,
+      rfc822_size
     ])
 
   defparsec :msg_atts,
