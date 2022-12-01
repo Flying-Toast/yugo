@@ -1,18 +1,12 @@
 defmodule Yugo.MsgAttParser.Helpers do
   @moduledoc false
 
-  def to_upcased_string(x) do
-    x
-    |> to_string()
-    |> String.upcase()
-  end
-
   def anycase_string(s) do
     [String.downcase(s), String.upcase(s)]
     |> Enum.map(&to_charlist/1)
     |> Enum.zip_with(& &1)
     |> Enum.reduce(NimbleParsec.empty(), fn x, acc -> NimbleParsec.ascii_char(acc, x) end)
-    |> NimbleParsec.reduce({Yugo.MsgAttParser.Helpers, :to_upcased_string, []})
+    |> NimbleParsec.reduce(:to_upcased_string)
   end
 
   def att_name(s) do
@@ -27,6 +21,17 @@ defmodule Yugo.MsgAttParser do
 
   import Yugo.MsgAttParser.Helpers, only: [anycase_string: 1, att_name: 1]
   import NimbleParsec
+
+  defp to_upcased_string(x) do
+    x
+    |> to_string()
+    |> String.upcase()
+  end
+
+  defp address_to_tuple([display_name, mailbox, host]) do
+    IO.puts("TODO: unquote according to RFC2822")
+    {display_name, "#{mailbox}@#{host}"}
+  end
 
   defp n_literal_octets(
          rest,
@@ -118,8 +123,8 @@ defmodule Yugo.MsgAttParser do
     # addr-name
     |> concat(nstring)
     |> ignore(ascii_char([?\s]))
-    # addr-adl
-    |> concat(nstring)
+    # addr-adl - ignored
+    |> ignore(nstring)
     |> ignore(ascii_char([?\s]))
     # addr-mailbox
     |> concat(nstring)
@@ -127,6 +132,7 @@ defmodule Yugo.MsgAttParser do
     # addr-host
     |> concat(nstring)
     |> ignore(ascii_char([?)]))
+    |> reduce(:address_to_tuple)
 
   address_list =
     choice([
