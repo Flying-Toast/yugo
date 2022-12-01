@@ -1,6 +1,6 @@
 defmodule Yugo do
   @moduledoc """
-  General auxiliary functions for Yugo.
+  Auxiliary functions for Yugo.
   """
 
   alias Yugo.{Filter, Client}
@@ -9,7 +9,7 @@ defmodule Yugo do
   Subscribes the calling process to the [`Client`](`Yugo.Client`) named by `client_name`.
 
   When you subscribe to a client, your process will be notified about new emails via a message
-  in the form `{:email, client, message}`, where `client` is the client that is notifying you,
+  in the form `{:email, client, message}`, where `client` is the name of the client that is notifying you,
   and `message` is the email.
 
   You may also pass an optional [`Filter`](`Yugo.Filter`) as the second argument to match what

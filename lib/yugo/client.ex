@@ -51,7 +51,7 @@ defmodule Yugo.Client do
     Yugo will make the initial connection without TLS, then upgrade to a TLS connection (using STARTTLS)
     before logging in. Yugo will never send login credentials over an insecure connection.
 
-    * `:mailbox` - The name of the mailbox ("folder") to monitor for emails. Defaults to `"INBOX"`.
+    * `:mailbox` - The name of the mailbox to monitor for emails. Defaults to `"INBOX"`.
     The default "INBOX" mailbox is defined in the IMAP standard. If your account has other mailboxes,
     you can pass the name of one as a string. A single [`Client`](`Yugo.Client`) can only monitor a single mailbox -
     to monitor multiple mailboxes, you need to start multiple [`Client`](`Yugo.Client`)s.

@@ -5,7 +5,7 @@ defmodule Yugo.Filter do
 
   ## Example
 
-  To create a filter that only accepts emails that have been read but not replied to:
+  To create a filter that only accepts emails that have been read and not replied to:
 
       alias Yugo.Filter
 
@@ -52,6 +52,14 @@ defmodule Yugo.Filter do
     * `:draft` - Message has not completed composition (marked as a draft).
 
     * `:deleted` - Message is "deleted". In most email clients, this means it was moved to the trash folder.
+
+  ## Example
+
+      alias Filter
+
+      # build a filter that only allows messages that have been seen.
+      Filter.all()
+      |> Filter.has_flag(:seen)
   """
   @spec has_flag(__MODULE__.t(), flag) :: __MODULE__.t()
   def has_flag(%__MODULE__{} = filter, flag) when flag in @legal_flag_atoms do
@@ -68,6 +76,14 @@ defmodule Yugo.Filter do
   @doc """
   Only accepts emails that do not have the specified flag.
   See `has_flag/2` for more information about flags.
+
+  ## Example
+
+      alias Filter
+
+      # build a filter that allows all messages that do not have the :deleted flag
+      Filter.all()
+      |> Filter.lacks_flag(:deleted)
   """
   @spec lacks_flag(__MODULE__.t(), flag) :: __MODULE__.t()
   def lacks_flag(%__MODULE__{} = filter, flag) when flag in @legal_flag_atoms do
