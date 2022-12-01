@@ -193,8 +193,8 @@ defmodule Yugo.Client do
   defp update_attrs_needed_by_filters(conn) do
     attrs =
       [
-        Enum.any?(conn.filters, &Filter.needs_flags?(&1)) && "FLAGS",
-        Enum.any?(conn.filters, &Filter.needs_envelope?(&1)) && "ENVELOPE"
+        Enum.any?(conn.filters, fn {f, _} -> Filter.needs_flags?(f) end) && "FLAGS",
+        Enum.any?(conn.filters, fn {f, _} -> Filter.needs_envelope?(f) end) && "ENVELOPE"
       ]
       |> Enum.reject(&(&1 == false))
       |> Enum.join(" ")
@@ -472,6 +472,14 @@ defmodule Yugo.Client do
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
           conn
           |> put_in([Access.key!(:unprocessed_messages), seq_num, :flags], flags)
+        else
+          conn
+        end
+
+      {:fetch, {seq_num, :envelope, envelope}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :envelope], envelope)
         else
           conn
         end
