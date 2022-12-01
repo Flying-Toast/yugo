@@ -32,8 +32,8 @@ defmodule Yugo.MsgAttParser do
          rest,
          [num_octets | acc],
          context,
-         line,
-         offset
+         _line,
+         _offset
        ) do
     <<octets::binary-size(num_octets), rest::binary>> = rest
     {rest, [octets | acc], context}
@@ -63,10 +63,13 @@ defmodule Yugo.MsgAttParser do
       quoted,
       literal
     ])
+    |> reduce(:to_string)
+
+  nil_ = anycase_string("NIL") |> replace(nil)
 
   nstring =
     choice([
-      anycase_string("NIL"),
+      nil_,
       string
     ])
 
@@ -110,7 +113,59 @@ defmodule Yugo.MsgAttParser do
     |> ignore(ascii_char([?)]))
     |> tag(:flags)
 
-  # "ENVELOPE" SP envelope / "INTERNALDATE" SP date-time /
+  address =
+    ignore(ascii_char([?(]))
+    # addr-name
+    |> concat(nstring)
+    |> ignore(ascii_char([?\s]))
+    # addr-adl
+    |> concat(nstring)
+    |> ignore(ascii_char([?\s]))
+    # addr-mailbox
+    |> concat(nstring)
+    |> ignore(ascii_char([?\s]))
+    # addr-host
+    |> concat(nstring)
+    |> ignore(ascii_char([?)]))
+
+  address_list =
+    choice([
+      nil_,
+      ignore(ascii_char([?(]))
+      |> times(address, min: 1)
+      |> ignore(ascii_char([?)]))
+    ])
+
+  envelope_value =
+    ignore(ascii_char([?(]))
+    |> tag(nstring, :date)
+    |> ignore(ascii_char([?\s]))
+    |> tag(nstring, :subject)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :from)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :sender)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :reply_to)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :to)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :cc)
+    |> ignore(ascii_char([?\s]))
+    |> tag(address_list, :bcc)
+    |> ignore(ascii_char([?\s]))
+    |> tag(nstring, :in_reply_to)
+    |> ignore(ascii_char([?\s]))
+    |> tag(nstring, :message_id)
+    |> ignore(ascii_char([?)]))
+    |> tag(:envelope_value)
+
+  envelope =
+    att_name("ENVELOPE")
+    |> concat(envelope_value)
+    |> unwrap_and_tag(:envelope)
+
+  # "INTERNALDATE" SP date-time /
   # "BODY" SP body /
   # "BODYSTRUCTURE" SP body /
   # "BODY" section ["<" number ">"] SP nstring /
@@ -121,7 +176,8 @@ defmodule Yugo.MsgAttParser do
       rfc822,
       rfc822_text,
       rfc822_size,
-      flags
+      flags,
+      envelope
     ])
 
   defparsec(
