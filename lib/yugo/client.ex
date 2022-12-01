@@ -356,7 +356,7 @@ defmodule Yugo.Client do
   defp release_message(conn, seqnum) do
     {{_, msg}, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
     # TODO: Send to matching filters
-    IO.puts("sending #{inspect msg} to matching filters")
+    IO.puts("sending #{inspect(msg)} to matching filters")
     conn
   end
 
@@ -365,7 +365,7 @@ defmodule Yugo.Client do
     conn
     |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
     # TODO: only fetch what is needed by filters
-    |> send_command(IO.inspect "FETCH #{seqnum} FLAGS")
+    |> send_command(IO.inspect("FETCH #{seqnum} FLAGS"))
   end
 
   defp apply_action(conn, action) do

@@ -53,20 +53,22 @@ defmodule Yugo.MsgAttParser do
         |> replace(?"),
         string(~S(\\))
         |> replace(?\\),
-        ascii_char([not: ?\\, not: ?"])
+        ascii_char(not: ?\\, not: ?")
       ])
     )
     |> ignore(ascii_char([?"]))
 
-  string = choice([
-    quoted,
-    literal
-  ])
+  string =
+    choice([
+      quoted,
+      literal
+    ])
 
-  nstring = choice([
-    anycase_string("NIL"),
-    string
-  ])
+  nstring =
+    choice([
+      anycase_string("NIL"),
+      string
+    ])
 
   uid =
     att_name("UID")
@@ -94,7 +96,7 @@ defmodule Yugo.MsgAttParser do
     |> unwrap_and_tag(:rfc822_size)
 
   flag_name =
-    ascii_char([not: ?\s, not: ?)])
+    ascii_char(not: ?\s, not: ?))
     |> times(min: 1)
     |> reduce(:to_string)
 
@@ -122,10 +124,12 @@ defmodule Yugo.MsgAttParser do
       flags
     ])
 
-  defparsec :msg_atts,
+  defparsec(
+    :msg_atts,
     optional(
       msg_att
       |> repeat(ignore(ascii_char([?\s])) |> concat(msg_att))
     )
     |> eos()
+  )
 end
