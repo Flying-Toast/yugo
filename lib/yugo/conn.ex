@@ -2,6 +2,7 @@ defmodule Yugo.Conn do
   @moduledoc false
 
   @type t :: %__MODULE__{
+          my_name: Yugo.Client.name(),
           tls: boolean,
           socket: :gen_tcp.socket() | :ssl.sslsocket(),
           server: String.t(),
@@ -35,8 +36,9 @@ defmodule Yugo.Conn do
         }
 
   @derive {Inspect, except: [:password]}
-  @enforce_keys [:tls, :socket, :username, :password, :server, :mailbox]
+  @enforce_keys [:my_name, :tls, :socket, :username, :password, :server, :mailbox]
   defstruct [
+    :my_name,
     :tls,
     :socket,
     :server,

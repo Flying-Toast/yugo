@@ -111,6 +111,7 @@ defmodule Yugo.Client do
       end
 
     conn = %Conn{
+      my_name: args[:name],
       tls: args[:tls],
       socket: socket,
       server: args[:server],
@@ -373,8 +374,13 @@ defmodule Yugo.Client do
   # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
   defp release_message(conn, seqnum) do
     {msg, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
-    # TODO: Send to matching filters
-    IO.puts("sending #{inspect(msg)} to matching filters")
+
+    for {filter, pid} <- conn.filters do
+      if Filter.accepts?(filter, msg) do
+        send(pid, {:email, conn.my_name, msg})
+      end
+    end
+
     conn
   end
 
@@ -384,7 +390,7 @@ defmodule Yugo.Client do
       conn
       |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
 
-    if conn.attrs_needed_by_filters == [] do
+    if conn.attrs_needed_by_filters == "" do
       conn
     else
       conn

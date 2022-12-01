@@ -43,6 +43,11 @@ defmodule Yugo.Filter do
     filter.has_flags != [] || filter.lacks_flags != []
   end
 
+  @doc false
+  def accepts?(%__MODULE__{} = filter, message) do
+    true
+  end
+
   @doc """
   Returns a [`Filter`](`Yugo.Filter`) that accepts all emails.
   """
