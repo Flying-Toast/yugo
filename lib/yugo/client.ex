@@ -388,12 +388,22 @@ defmodule Yugo.Client do
       {:uid_next, num} ->
         %{conn | uid_next: num}
 
-      {:expunge, _seq_num} ->
+      {:expunge, expunged_num} ->
         %{
           conn
           | num_exists: conn.num_exists - 1,
             unprocessed_messages:
-              Enum.map(conn.unprocessed_messages, fn {k, v} -> {k - 1, v} end)
+              conn.unprocessed_messages
+              |> Enum.reject(fn {k, _v} -> k == expunged_num end)
+              |> Enum.map(fn {k, v} ->
+                cond do
+                  expunged_num < k ->
+                    {k - 1, v}
+
+                  expunged_num > k ->
+                    {k, v}
+                end
+              end)
               |> Map.new()
         }
     end
