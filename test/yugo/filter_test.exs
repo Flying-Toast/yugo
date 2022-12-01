@@ -8,7 +8,7 @@ defmodule Yugo.FilterTest do
                  "Cannot enforce a has_flag constraint for \":seen\" because this filter already has a lacks_flag constraint for the same flag.",
                  fn ->
                    Filter.all()
-                   |> Filter.has_flag(:recent)
+                   |> Filter.has_flag(:flagged)
                    |> Filter.lacks_flag(:draft)
                    |> Filter.lacks_flag(:seen)
                    |> Filter.has_flag(:seen)
@@ -24,16 +24,16 @@ defmodule Yugo.FilterTest do
   end
 
   test "doesn't add duplicate flag constraints" do
-    %Filter{has_flags: [:recent, :seen]} =
+    %Filter{has_flags: [:draft, :seen]} =
       Filter.all()
       |> Filter.has_flag(:seen)
-      |> Filter.has_flag(:recent)
+      |> Filter.has_flag(:draft)
       |> Filter.has_flag(:seen)
 
-    %Filter{lacks_flags: ["myflag"]} =
+    %Filter{lacks_flags: [:draft]} =
       Filter.all()
-      |> Filter.lacks_flag("myflag")
-      |> Filter.lacks_flag("myflag")
-      |> Filter.lacks_flag("myflag")
+      |> Filter.lacks_flag(:draft)
+      |> Filter.lacks_flag(:draft)
+      |> Filter.lacks_flag(:draft)
   end
 end

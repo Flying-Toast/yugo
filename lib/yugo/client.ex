@@ -2,7 +2,7 @@ defmodule Yugo.Client do
   @moduledoc """
   A persistent connection to an IMAP server.
 
-  Normally you do not call the functions in this module directly, but rather start a `Client` as part
+  Normally you do not call the functions in this module directly, but rather start a [`Client`](`Yugo.Client`) as part
   of your application's supervision tree. For example:
 
       defmodule MyApp.Application do
@@ -28,6 +28,8 @@ defmodule Yugo.Client do
   use GenServer
   alias Yugo.{Conn, Parser}
 
+  @type name :: term
+
   @doc """
   Starts an IMAP client process linked to the calling process.
 
@@ -39,7 +41,7 @@ defmodule Yugo.Client do
 
     * `:password` - Required. Password used to log in.
 
-    * `:name` - Required. A name used to reference this `Client`. Can be any atom.
+    * `:name` - Required. A name used to reference this [`Client`](`Yugo.Client`). Can be any term.
 
     * `:server` - Required. The location of the IMAP server, e.g. `"imap.example.com"`.
 
@@ -51,8 +53,8 @@ defmodule Yugo.Client do
 
     * `:mailbox` - The name of the mailbox ("folder") to monitor for emails. Defaults to `"INBOX"`.
     The default "INBOX" mailbox is defined in the IMAP standard. If your account has other mailboxes,
-    you can pass the name of one as a string. A single `Client` can only monitor a single mailbox -
-    to monitor multiple mailboxes, you need to start multiple `Client`s.
+    you can pass the name of one as a string. A single [`Client`](`Yugo.Client`) can only monitor a single mailbox -
+    to monitor multiple mailboxes, you need to start multiple [`Client`](`Yugo.Client`)s.
 
   ## Example
 
@@ -63,7 +65,7 @@ defmodule Yugo.Client do
           server: String.t(),
           username: String.t(),
           password: String.t(),
-          name: atom,
+          name: name,
           port: 1..65535,
           tls: boolean,
           mailbox: String.t(),
@@ -124,6 +126,18 @@ defmodule Yugo.Client do
   def terminate(_reason, conn) do
     conn
     |> send_command("LOGOUT")
+  end
+
+  @impl true
+  def handle_cast({:subscribe, pid, filter}, conn) do
+    {:noreply, %{conn | filters: [{filter, pid} | conn.filters]}}
+  end
+
+  @impl true
+  def handle_cast({:unsubscribe, pid}, conn) do
+    conn = %{conn | filters: Enum.reject(conn.filters, &(elem(&1, 1) == pid))}
+
+    {:noreply, conn}
   end
 
   @impl true

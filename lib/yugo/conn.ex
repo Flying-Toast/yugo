@@ -28,7 +28,8 @@ defmodule Yugo.Conn do
           mailbox_mutability: :read_only | :read_write,
           idling: boolean,
           idle_timer: reference | nil,
-          idle_timed_out: boolean
+          idle_timed_out: boolean,
+          filters: [{Yugo.Filter.t(), pid}]
         }
 
   @derive {Inspect, except: [:password]}
@@ -56,6 +57,7 @@ defmodule Yugo.Conn do
     mailbox_mutability: nil,
     idling: false,
     idle_timer: nil,
-    idle_timed_out: false
+    idle_timed_out: false,
+    filters: []
   ]
 end
