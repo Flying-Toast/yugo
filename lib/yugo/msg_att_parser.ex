@@ -28,17 +28,14 @@ defmodule Yugo.MsgAttParser do
     |> String.upcase()
   end
 
-  defp address_to_tuple([display_name, mailbox, host]) do
-    unquoted =
-      cond do
-        mailbox == nil or host == nil ->
-          raise "nil address"
+  defp address_to_string([mailbox, host]) do
+    cond do
+      mailbox == nil or host == nil ->
+        raise "nil address"
 
-        true ->
-          String.downcase("#{mailbox}@#{host}")
-      end
-
-    {display_name, unquoted}
+      true ->
+        String.downcase("#{mailbox}@#{host}")
+    end
   end
 
   defp parse_rfc5322_datetime([string]) do
@@ -70,6 +67,9 @@ defmodule Yugo.MsgAttParser do
     |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_hours"]), :hour)
     |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_minutes"]), :minute)
   end
+
+  defp reduce_address_list(rest, [nil], context, _line, _offset), do: {rest, [], context}
+  defp reduce_address_list(rest, acc, context, _line, _offset), do: {rest, acc, context}
 
   defp n_literal_octets(
          rest,
@@ -159,7 +159,7 @@ defmodule Yugo.MsgAttParser do
   address =
     ignore(ascii_char([?(]))
     # addr-name
-    |> concat(nstring)
+    |> ignore(nstring)
     |> ignore(ascii_char([?\s]))
     # addr-adl - ignored
     |> ignore(nstring)
@@ -170,7 +170,7 @@ defmodule Yugo.MsgAttParser do
     # addr-host
     |> concat(nstring)
     |> ignore(ascii_char([?)]))
-    |> reduce(:address_to_tuple)
+    |> reduce(:address_to_string)
 
   address_list =
     choice([
@@ -179,6 +179,7 @@ defmodule Yugo.MsgAttParser do
       |> times(address, min: 1)
       |> ignore(ascii_char([?)]))
     ])
+    |> post_traverse(:reduce_address_list)
 
   envelope_value =
     ignore(ascii_char([?(]))

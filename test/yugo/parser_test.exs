@@ -58,19 +58,19 @@ defmodule Yugo.ParserTest do
       fetch:
         {123, :envelope,
          %{
-           bcc: [nil],
+           bcc: [],
            cc: [
-             {nil, "minutes@cnri.reston.va.us"},
-             {"John Klensin", "klensin@mit.edu"}
+             "minutes@cnri.reston.va.us",
+             "klensin@mit.edu"
            ],
            date: ~U[1996-07-16 19:23:25Z],
-           from: [{"Terry Gray", "gray@cac.washington.edu"}],
+           from: ["gray@cac.washington.edu"],
            in_reply_to: nil,
            message_id: "<B27397-0100000@cac.washington.edu>",
-           reply_to: [{"Terry Gray", "gray@cac.washington.edu"}],
-           sender: [{"Terry Gray", "gray@cac.washington.edu"}],
+           reply_to: ["gray@cac.washington.edu"],
+           sender: ["gray@cac.washington.edu"],
            subject: "IMAP4rev1 WG mtg summary and minutes",
-           to: [nil: "imap@cac.washington.edu"]
+           to: ["imap@cac.washington.edu"]
          }}
     ] =
       Parser.parse_response(
