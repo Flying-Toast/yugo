@@ -28,6 +28,9 @@ defmodule Yugo.Client do
   use GenServer
   alias Yugo.{Conn, Parser, Filter}
 
+  @typedoc """
+  The identifier used to refer to a [`Client`](`Yugo.Client`).
+  """
   @type name :: term
 
   @doc """

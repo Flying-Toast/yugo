@@ -1,7 +1,7 @@
 defmodule Yugo.Filter do
   @moduledoc """
-  A [`Filter`](`Yugo.Filter`) is a construct that enables you to specify
-  which emails you would like a [`Client`](`Yugo.Client`) to notify you about.
+  A construct that enables you to specify which emails you would
+  like a [`Client`](`Yugo.Client`) to notify you about.
 
   ## Example
 
