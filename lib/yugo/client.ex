@@ -348,7 +348,7 @@ defmodule Yugo.Client do
   end
 
   defp maybe_process_messages(conn) do
-    if command_in_progress?(conn) or conn.unprocessed_messages == %{} do
+    if command_in_progress?(conn) or conn.unprocessed_messages == %{} or conn.state != :selected do
       conn
     else
       process_earliest_message(conn)
