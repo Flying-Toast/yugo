@@ -362,14 +362,28 @@ defmodule Yugo.Client do
     {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
 
     if msg[:fetched] do
-      if msg[:body_fetched] do
+      if msg[:fetched_full] do
         conn
         |> release_message(seqnum)
       else
-        IO.puts("TODO: fetch all body parts")
-        conn
-        |> put_in([Access.key!(:unprocessed_messages), seqnum, :body_fetched], true)
-        |> send_command("FETCH #{seqnum} BODY[1]")
+        parts_to_fetch =
+          [flags: "FLAGS", envelope: "ENVELOPE"]
+          |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
+          |> Enum.map(&elem(&1, 1))
+
+        # TODO: fetch all body parts
+        parts_to_fetch = ["BODY[1]" | parts_to_fetch]
+
+        conn =
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched_full], true)
+
+        unless Enum.empty?(parts_to_fetch) do
+          conn
+          |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
+        else
+          conn
+        end
       end
     else
       conn
@@ -383,11 +397,18 @@ defmodule Yugo.Client do
 
     for {filter, pid} <- conn.filters do
       if Filter.accepts?(filter, msg) do
-        send(pid, {:email, conn.my_name, msg})
+        send(pid, {:email, conn.my_name, package_message(msg)})
       end
     end
 
     conn
+  end
+
+  # Preprocesses/cleans the message before it is sent to a subscriber
+  defp package_message(msg) do
+    msg
+    |> Map.drop([:fetched, :fetched_full])
+    |> update_in([:envelope], &Map.drop(&1, [:from]))
   end
 
   # FETCHes the message attributes needed to apply filters
