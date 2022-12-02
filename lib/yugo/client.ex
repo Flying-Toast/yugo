@@ -248,13 +248,9 @@ defmodule Yugo.Client do
         conn
         |> apply_actions(actions)
 
-      if conn.unprocessed_messages == %{} do
-        conn
-        |> maybe_idle()
-      else
-        conn
-        |> process_messages()
-      end
+      conn
+      |> maybe_process_messages()
+      |> maybe_idle()
     else
       # ignore the first message from the server, which is the unsolicited greeting
       %{conn | got_server_greeting: true}
@@ -351,8 +347,8 @@ defmodule Yugo.Client do
     |> send_raw("DONE\r\n")
   end
 
-  defp process_messages(conn) do
-    if command_in_progress?(conn) do
+  defp maybe_process_messages(conn) do
+    if command_in_progress?(conn) or conn.unprocessed_messages == %{} do
       conn
     else
       process_earliest_message(conn)
