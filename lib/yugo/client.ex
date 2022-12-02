@@ -359,8 +359,15 @@ defmodule Yugo.Client do
     {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
 
     if msg[:fetched] do
-      conn
-      |> release_message(seqnum)
+      if msg[:body_fetched] do
+        conn
+        |> release_message(seqnum)
+      else
+        IO.puts("TODO: fetch all body parts")
+        conn
+        |> put_in([Access.key!(:unprocessed_messages), seqnum, :body_fetched], true)
+        |> send_command("FETCH #{seqnum} BODY[1]")
+      end
     else
       conn
       |> fetch_message(seqnum)
