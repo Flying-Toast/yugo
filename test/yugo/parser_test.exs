@@ -63,7 +63,7 @@ defmodule Yugo.ParserTest do
              {nil, "minutes@cnri.reston.va.us"},
              {"John Klensin", "klensin@mit.edu"}
            ],
-           date: "Wed, 17 Jul 1996 02:23:25 -0700 (PDT)",
+           date: ~U[1996-07-16 19:23:25Z],
            from: [{"Terry Gray", "gray@cac.washington.edu"}],
            in_reply_to: nil,
            message_id: "<B27397-0100000@cac.washington.edu>",

@@ -41,6 +41,36 @@ defmodule Yugo.MsgAttParser do
     {display_name, unquoted}
   end
 
+  defp parse_rfc5322_datetime([string]) do
+    monthname = ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+
+    parts =
+      Regex.named_captures(
+        ~r/^(?:[^,]+,)?\s*(?<day>\d+)\s+(?<month>#{Enum.join(monthname, "|")})\s+(?<year>\d{4})\s+(?<hour>\d{2}):(?<minute>\d{2}):?(?<second>\d{2})?\s+(?<offset_sign>[+\-])(?<offset_hours>\d{2})(?<offset_minutes>\d{2})/i,
+        string
+      )
+
+    month = 1 + Enum.find_index(monthname, &(&1 == parts["month"]))
+
+    date =
+      Date.new!(
+        String.to_integer(parts["year"]),
+        month,
+        String.to_integer(parts["day"])
+      )
+
+    time =
+      Time.new!(
+        String.to_integer(parts["hour"]),
+        String.to_integer(parts["minute"]),
+        String.to_integer(parts["second"] || 0)
+      )
+
+    DateTime.new!(date, time)
+    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_hours"]), :hour)
+    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_minutes"]), :minute)
+  end
+
   defp n_literal_octets(
          rest,
          [num_octets | acc],
@@ -152,7 +182,7 @@ defmodule Yugo.MsgAttParser do
 
   envelope_value =
     ignore(ascii_char([?(]))
-    |> unwrap_and_tag(nstring, :date)
+    |> unwrap_and_tag(reduce(nstring, :parse_rfc5322_datetime), :date)
     |> ignore(ascii_char([?\s]))
     |> unwrap_and_tag(nstring, :subject)
     |> ignore(ascii_char([?\s]))
