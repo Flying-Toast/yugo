@@ -361,22 +361,22 @@ defmodule Yugo.Client do
   defp process_earliest_message(conn) do
     {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
 
-    if msg[:fetched] do
-      if msg[:fetched_full] do
+    cond do
+      not Map.has_key?(msg, :fetched) ->
         conn
-        |> release_message(seqnum)
-      else
+        |> fetch_message(seqnum)
+
+      msg.fetched == :filter ->
         parts_to_fetch =
           [flags: "FLAGS", envelope: "ENVELOPE"]
           |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
           |> Enum.map(&elem(&1, 1))
 
-        # TODO: fetch all body parts
-        parts_to_fetch = ["BODY[1]" | parts_to_fetch]
+        parts_to_fetch = ["BODY" | parts_to_fetch]
 
         conn =
           conn
-          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched_full], true)
+          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
 
         unless Enum.empty?(parts_to_fetch) do
           conn
@@ -384,10 +384,17 @@ defmodule Yugo.Client do
         else
           conn
         end
-      end
-    else
-      conn
-      |> fetch_message(seqnum)
+
+      msg.fetched == :pre_body ->
+        conn
+        # TODO: fetch all body parts
+        |> send_command("FETCH #{seqnum} (BODY[1])", fn conn, :ok, _text ->
+          put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
+        end)
+
+      msg.fetched == :full ->
+        conn
+        |> release_message(seqnum)
     end
   end
 
@@ -407,7 +414,7 @@ defmodule Yugo.Client do
   # Preprocesses/cleans the message before it is sent to a subscriber
   defp package_message(msg) do
     msg
-    |> Map.drop([:fetched, :fetched_full])
+    |> Map.drop([:fetched])
     |> update_in([:envelope], &Map.drop(&1, [:from]))
   end
 
@@ -415,7 +422,7 @@ defmodule Yugo.Client do
   defp fetch_message(conn, seqnum) do
     conn =
       conn
-      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], true)
+      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :filter)
 
     if conn.attrs_needed_by_filters == "" do
       conn
