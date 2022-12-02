@@ -228,7 +228,7 @@ defmodule Yugo.Client do
           :gen_tcp.recv(conn.socket, 0)
         end
 
-      recv_literals(conn, [next_line | acc], n_remaining - String.length(next_line))
+      recv_literals(conn, [next_line | acc], n_remaining - byte_size(next_line))
     end
   end
 
