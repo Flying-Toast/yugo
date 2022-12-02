@@ -237,16 +237,16 @@ defmodule Yugo.Client do
       actions = Parser.parse_response(data)
 
       conn =
-        if conn.idling and actions != [:continuation] do
+        conn
+        |> apply_actions(actions)
+
+      conn =
+        if conn.idling and conn.unprocessed_messages != %{} do
           conn
           |> cancel_idle()
         else
           conn
         end
-
-      conn =
-        conn
-        |> apply_actions(actions)
 
       conn
       |> maybe_process_messages()
