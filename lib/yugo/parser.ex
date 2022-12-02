@@ -11,8 +11,10 @@ defmodule Yugo.Parser do
         "\\FLAGGED" -> :flagged
         "\\DRAFT" -> :draft
         "\\DELETED" -> :deleted
+        _ -> nil
       end
     end
+    |> Enum.filter(&Function.identity/1)
   end
 
   @doc """
