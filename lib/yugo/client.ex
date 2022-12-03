@@ -415,10 +415,23 @@ defmodule Yugo.Client do
 
   # Preprocesses/cleans the message before it is sent to a subscriber
   defp package_message(msg) do
+    bodies =
+      Enum.zip_with(
+        msg.body_structure,
+        Map.values(msg.bodies),
+        fn %{encoding: encoding, mime_type: mime_type}, content ->
+          {encoding, mime_type, content}
+        end
+      )
+      |> Enum.map(fn {encoding, mime_type, content} ->
+        {mime_type, Parser.decode_body(content, encoding)}
+      end)
+
     msg
-    |> Map.drop([:fetched])
+    |> Map.drop([:fetched, :body_structure])
     # From is too easily spoofed, drop it so users use :sender instead
     |> update_in([:envelope], &Map.drop(&1, [:from]))
+    |> put_in([:bodies], bodies)
   end
 
   # FETCHes the message attributes needed to apply filters

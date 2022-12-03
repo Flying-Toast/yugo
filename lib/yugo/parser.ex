@@ -17,6 +17,22 @@ defmodule Yugo.Parser do
     |> Enum.filter(&Function.identity/1)
   end
 
+  def decode_body(body, encoding) do
+    case encoding do
+      "BASE64" ->
+        Base.decode64!(body)
+
+      "QUOTED-PRINTABLE" ->
+        Regex.replace(~r/=(..)/, body, fn _, x ->
+          {n, _} = Integer.parse(x, 16)
+          n
+        end)
+
+      _ ->
+        body
+    end
+  end
+
   @doc """
   Parses a response from the server into a list of "actions".
 
@@ -233,7 +249,7 @@ defmodule Yugo.Parser do
 
         body = %{
           mime_type: mime_type,
-          encoding: enc
+          encoding: String.upcase(enc)
         }
 
         {{:body, body}, rest}
