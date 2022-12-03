@@ -387,7 +387,14 @@ defmodule Yugo.Client do
       msg.fetched == :pre_body ->
         body_parts =
           Enum.flat_map(msg.body_structure, &body_part_paths(&1, []))
-          |> Enum.map(&"BODY.PEEK[#{&1}]")
+
+        body_parts =
+          if body_parts == [""] do
+            ["BODY.PEEK[1]"]
+          else
+            body_parts
+            |> Enum.map(&"BODY.PEEK[#{&1}]")
+          end
 
         conn
         |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
@@ -439,6 +446,13 @@ defmodule Yugo.Client do
   end
 
   defp zip_body_with_structure(msg_bodies, msg_body_structure) do
+    msg_bodies =
+      if is_map(msg_bodies) and Map.keys(msg_bodies) == [1] do
+        msg_bodies[1]
+      else
+        msg_bodies
+      end
+
     msg_body_structure
     |> Enum.flat_map(&zip_body_with_structure_aux(msg_bodies, &1))
   end
