@@ -387,7 +387,7 @@ defmodule Yugo.Client do
       msg.fetched == :pre_body ->
         body_parts =
           1..length(msg.body_structure)
-          |> Enum.map(&"BODY[#{&1}]")
+          |> Enum.map(&"BODY.PEEK[#{&1}]")
 
         conn
         |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
