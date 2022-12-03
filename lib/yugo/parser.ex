@@ -198,6 +198,15 @@ defmodule Yugo.Parser do
   defp string(<<?", _::binary>> = rest), do: quoted_string(rest)
   defp string(<<?{, _::binary>> = rest), do: literal(rest)
 
+  def nstring(rest) do
+    if Regex.match?(~r/^NIL/is, rest) do
+      <<_::binary-size(3), rest::binary>> = rest
+      {nil, rest}
+    else
+      string(rest)
+    end
+  end
+
   defp quoted_string(<<?", rest::binary>>) do
     quoted_string_contents(rest, [])
   end
