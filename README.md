@@ -15,8 +15,6 @@ defmodule MyApp.Application do
        name: :example_client,
        server: "imap.example.com",
        username: "me@example.com",
-       # NOTE: You should not hardcode passwords like this example.
-       # In production, you should probably store/access your password as an environment variable.
        password: "pa55w0rd"}
     ]
 
