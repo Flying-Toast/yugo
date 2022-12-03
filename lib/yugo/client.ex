@@ -384,9 +384,12 @@ defmodule Yugo.Client do
         end
 
       msg.fetched == :pre_body ->
+        body_parts =
+          1..length(msg.body_structure)
+          |> Enum.map(&"BODY[#{&1}]")
+
         conn
-        # TODO: fetch all body parts
-        |> send_command("FETCH #{seqnum} (BODY[1])", fn conn, :ok, _text ->
+        |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
           put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
         end)
 
@@ -524,7 +527,7 @@ defmodule Yugo.Client do
           conn
           |> update_in(
             [Access.key!(:unprocessed_messages), seq_num, :body_structure],
-            &(&1 ++ [body])
+            &((&1 || []) ++ [body])
           )
         else
           conn
