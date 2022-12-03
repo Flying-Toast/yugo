@@ -428,10 +428,10 @@ defmodule Yugo.Client do
       end)
 
     msg
-    |> Map.drop([:fetched, :body_structure])
-    # From is too easily spoofed, drop it so users use :sender instead
-    |> update_in([:envelope], &Map.drop(&1, [:from]))
+    |> Map.merge(msg.envelope)
     |> put_in([:bodies], bodies)
+    # From is too easily spoofed, drop it so users use :sender instead
+    |> Map.drop([:from, :fetched, :body_structure, :envelope])
   end
 
   # FETCHes the message attributes needed to apply filters
