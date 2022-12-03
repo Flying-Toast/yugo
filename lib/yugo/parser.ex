@@ -156,7 +156,34 @@ defmodule Yugo.Parser do
 
   # parses the <msg-att> from the RFC's APRS, minus the outer parenthesis
   defp parse_msg_atts(data) do
-    {:ok, parsed, _, _, _, _} = Yugo.MsgAttParser.msg_atts(data)
-    parsed
   end
+
+  defp parse_list(<<?(, rest::binary>>, parsers) do
+  end
+
+  # takes a list of parser functions to parse an IMAP parenthesized list
+  defp parse_list_items() do
+  end
+
+  defp quoted_string(<<?", rest::binary>>) do
+    quoted_string_contents(rest, [])
+  end
+
+  defp quoted_string_contents(<<?", rest::binary>>, acc), do: {to_string(Enum.reverse(acc)), rest}
+  defp quoted_string_contents(<<"\\\"", rest::binary>>, acc), do: quoted_string_contents(rest, [?" | acc])
+  defp quoted_string_contents(<<"\\\\", rest::binary>>, acc), do: quoted_string_contents(rest, [?\\ | acc])
+  defp quoted_string_contents(<<ch, rest::binary>>, acc), do: quoted_string_contents(rest, [ch | acc])
+
+  defp charlist_to_integer(c) do
+    {int, []} = :string.to_integer(c)
+    int
+  end
+
+  defp literal(<<?{, rest::binary>>), do: literal_aux(rest, [])
+  defp literal_aux(<<"}\r\n", rest::binary>>, acc) do
+    num_octets = charlist_to_integer(Enum.reverse(acc))
+    <<octets::binary-size(num_octets), rest::binary>> = rest
+    {octets, rest}
+  end
+  defp literal_aux(<<n, rest::binary>>, acc), do: literal_aux(rest, [n | acc])
 end
