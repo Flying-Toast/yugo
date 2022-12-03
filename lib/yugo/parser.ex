@@ -165,6 +165,9 @@ defmodule Yugo.Parser do
   defp parse_list_items() do
   end
 
+  def string(<<?", _::binary>> = rest), do: quoted_string(rest)
+  def string(<<?{, _::binary>> = rest), do: literal(rest)
+
   defp quoted_string(<<?", rest::binary>>) do
     quoted_string_contents(rest, [])
   end
