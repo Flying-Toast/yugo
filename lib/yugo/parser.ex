@@ -169,8 +169,12 @@ defmodule Yugo.Parser do
 
     case name do
       "FLAGS" ->
-        {flags, rest} = parse_flags(rest)
+        {flags, rest} = parse_variable_length_list(rest, &flag_parser/1)
         {{:flags, flags}, rest}
+
+      #"ENVELOPE" ->
+      #  [date, subject, from, sender, reply_to, to, cc, bcc, in_reply_to, message_id]
+      #  [&nstring/1, &nstring/1,]
     end
   end
 
@@ -184,16 +188,18 @@ defmodule Yugo.Parser do
     parse_list_aux(rest, parsers, [parser_output | acc])
   end
 
-  defp parse_flags(<<?(, rest::binary>>), do: parse_flags_aux(rest, [], [])
-  defp parse_flags_aux(<<?\s, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [], [to_string(Enum.reverse(flag_acc)) | acc])
-  defp parse_flags_aux(<<?), rest::binary>>, flag_acc, acc) do
-    if flag_acc == '' do
-      {acc, rest}
-    else
-      {[to_string(Enum.reverse(flag_acc)) | acc], rest}
-    end
+  defp parse_variable_length_list(<<?(, rest::binary>>, parser), do: parse_variable_length_list_aux(rest, parser, [])
+  defp parse_variable_length_list_aux(<<?), rest::binary>>, _, acc), do: {Enum.reverse(acc), rest}
+  defp parse_variable_length_list_aux(<<?\s, rest::binary>>, parser, acc), do: parse_variable_length_list_aux(rest, parser, acc)
+  defp parse_variable_length_list_aux(rest, parser, acc) do
+    {parser_output, rest} = parser.(rest)
+    parse_variable_length_list_aux(rest, parser, [parser_output | acc])
   end
-  defp parse_flags_aux(<<c, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [c | flag_acc], acc)
+
+  defp flag_parser(rest) do
+    [flag, rest] = Regex.run(~r/^([^ \)]+)(.*)/is, rest, capture: :all_but_first)
+    {flag, rest}
+  end
 
   defp string(<<?", _::binary>> = rest), do: quoted_string(rest)
   defp string(<<?{, _::binary>> = rest), do: literal(rest)
