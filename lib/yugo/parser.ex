@@ -18,7 +18,9 @@ defmodule Yugo.Parser do
   def decode_body(body, encoding) do
     case encoding do
       "BASE64" ->
-        Base.decode64!(body)
+        body
+        |> String.replace("\r\n", "")
+        |> Base.decode64!()
 
       "QUOTED-PRINTABLE" ->
         body = String.replace(body, "=\r\n", "")
