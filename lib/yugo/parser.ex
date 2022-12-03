@@ -174,6 +174,16 @@ defmodule Yugo.Parser do
     end
   end
 
+  # takes a list of parser functions to parse an IMAP parenthesized list
+  defp parse_list(<<?(, rest::binary>>, parsers), do: parse_list_aux(rest, parsers, [])
+
+  defp parse_list_aux(<<?), rest::binary>>, [], acc), do: {Enum.reverse(acc), rest}
+  defp parse_list_aux(<<?\s, rest::binary>>, parsers, acc), do: parse_list_aux(rest, parsers, acc)
+  defp parse_list_aux(rest, [p | parsers], acc) do
+    {parser_output, rest} = p.(rest)
+    parse_list_aux(rest, parsers, [parser_output | acc])
+  end
+
   defp parse_flags(<<?(, rest::binary>>), do: parse_flags_aux(rest, [], [])
   defp parse_flags_aux(<<?\s, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [], [to_string(Enum.reverse(flag_acc)) | acc])
   defp parse_flags_aux(<<?), rest::binary>>, flag_acc, acc) do
@@ -184,13 +194,6 @@ defmodule Yugo.Parser do
     end
   end
   defp parse_flags_aux(<<c, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [c | flag_acc], acc)
-
-  defp parse_list(<<?(, rest::binary>>, parsers) do
-  end
-
-  # takes a list of parser functions to parse an IMAP parenthesized list
-  defp parse_list_items() do
-  end
 
   defp string(<<?", _::binary>> = rest), do: quoted_string(rest)
   defp string(<<?{, _::binary>> = rest), do: literal(rest)
