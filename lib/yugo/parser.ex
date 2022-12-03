@@ -211,16 +211,23 @@ defmodule Yugo.Parser do
           parse_variable_length_list(rest, &parse_string_pair/1)
         end
 
-        {[mime1, mime2, _params, _id, _desc, enc, _octets], rest} =
-          parse_list(rest, [
-            &parse_string/1,
-            &parse_string/1,
-            parse_body_fld_param,
-            &parse_nstring/1,
-            &parse_nstring/1,
-            &parse_string/1,
-            &parse_number/1
-          ])
+        # TODO: support body-type-mpart and body-type-msg
+
+        {[mime1, mime2, _params, _id, _desc, enc, _octets, _lines_opt], rest} =
+          parse_list(
+            rest,
+            [
+              &parse_string/1,
+              &parse_string/1,
+              parse_body_fld_param,
+              &parse_nstring/1,
+              &parse_nstring/1,
+              &parse_string/1,
+              &parse_number/1,
+              &parse_optional_number/1
+            ],
+            :lax
+          )
 
         mime_type = "#{String.downcase(mime1)}/#{String.downcase(mime2)}"
 
@@ -234,14 +241,19 @@ defmodule Yugo.Parser do
   end
 
   # takes a list of parser functions to parse an IMAP parenthesized list
-  defp parse_list(<<?(, rest::binary>>, parsers), do: parse_list_aux(rest, parsers, [])
+  # pass `:lax` instead of `:strict` if it shouldn't raise when the list ends but there are still unused parsers.
+  defp parse_list(<<?(, rest::binary>>, parsers, strict? \\ :strict),
+    do: parse_list_aux(rest, parsers, [], strict?)
 
-  defp parse_list_aux(<<?), rest::binary>>, [], acc), do: {Enum.reverse(acc), rest}
-  defp parse_list_aux(<<?\s, rest::binary>>, parsers, acc), do: parse_list_aux(rest, parsers, acc)
+  defp parse_list_aux(<<?), rest::binary>>, [], acc, :strict), do: {Enum.reverse(acc), rest}
+  defp parse_list_aux(<<?), rest::binary>>, _, acc, :lax), do: {Enum.reverse(acc), rest}
 
-  defp parse_list_aux(rest, [p | parsers], acc) do
+  defp parse_list_aux(<<?\s, rest::binary>>, parsers, acc, strict?),
+    do: parse_list_aux(rest, parsers, acc, strict?)
+
+  defp parse_list_aux(rest, [p | parsers], acc, strict?) do
     {parser_output, rest} = p.(rest)
-    parse_list_aux(rest, parsers, [parser_output | acc])
+    parse_list_aux(rest, parsers, [parser_output | acc], strict?)
   end
 
   defp parse_variable_length_list(<<?(, rest::binary>>, parser),
@@ -306,6 +318,10 @@ defmodule Yugo.Parser do
     {int, []} = :string.to_integer(Enum.reverse(acc))
     {int, rest}
   end
+
+  # parses a number or returns `{nil, rest}` if it cant.
+  defp parse_optional_number(<<c, _::binary>> = rest) when c in ?0..?9, do: parse_number(rest)
+  defp parse_optional_number(rest), do: {nil, rest}
 
   defp parse_quoted_string(<<?", rest::binary>>) do
     parse_quoted_string_aux(rest, [])

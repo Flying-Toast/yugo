@@ -150,7 +150,7 @@ defmodule Yugo.Client do
 
   @impl true
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
-    data = recv_literals(conn, [data], 0)
+    data = recv_literals(conn, [data])
 
     # we set [active: :once] each time so that we can parse packets that have synchronizing literals spanning over multiple lines
     :ok =
@@ -205,13 +205,13 @@ defmodule Yugo.Client do
 
   # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
   # have at least 123 bytes. If the line ends with another `{123}`, repeat the process.
-  defp recv_literals(%Conn{} = conn, [prev | _] = acc, n_remaining) do
+  defp recv_literals(%Conn{} = conn, [prev | _] = acc, n_remaining \\ 0) do
     if n_remaining <= 0 do
       # n_remaining <= 0 - we don't need any more bytes to fulfil the previous literal. We might be done...
       case Regex.run(~r/\{(\d+)\}\r\n$/, prev, capture: :all_but_first) do
         [n] ->
           # ...unless there is another literal.
-          n = String.to_integer(n)
+          n = String.to_integer(n) + 1
           recv_literals(conn, acc, n)
 
         _ ->
@@ -515,6 +515,17 @@ defmodule Yugo.Client do
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
           conn
           |> put_in([Access.key!(:unprocessed_messages), seq_num, :envelope], envelope)
+        else
+          conn
+        end
+
+      {:fetch, {seq_num, :body, body}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> update_in(
+            [Access.key!(:unprocessed_messages), seq_num, :body_structure],
+            &(&1 ++ [body])
+          )
         else
           conn
         end
