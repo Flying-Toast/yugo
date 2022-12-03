@@ -1,8 +1,6 @@
 defmodule Yugo.Parser do
   @moduledoc false
 
-  require Logger
-
   def system_flags_to_atoms(flags) do
     for flag <- flags do
       case String.upcase(flag) do
@@ -119,7 +117,6 @@ defmodule Yugo.Parser do
         [uid_next: num]
 
       true ->
-        Logger.info(~s([Yugo] didn't parse response: "* OK #{resp}"))
         []
     end
   end
@@ -165,7 +162,6 @@ defmodule Yugo.Parser do
         |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
 
       true ->
-        Logger.info(~s([Yugo] didn't parse response: "* #{resp}"))
         []
     end
   end
