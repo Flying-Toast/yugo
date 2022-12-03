@@ -385,8 +385,7 @@ defmodule Yugo.Client do
         end
 
       msg.fetched == :pre_body ->
-        body_parts =
-          Enum.flat_map(msg.body_structure, &body_part_paths(&1, []))
+        body_parts = Enum.flat_map(msg.body_structure, &body_part_paths(&1, []))
 
         body_parts =
           if body_parts == [""] do
@@ -446,15 +445,22 @@ defmodule Yugo.Client do
   end
 
   defp zip_body_with_structure(msg_bodies, msg_body_structure) do
-    msg_bodies =
+    {msg_bodies, wrap_outer} =
       if is_map(msg_bodies) and Map.keys(msg_bodies) == [1] do
-        msg_bodies[1]
+        {msg_bodies[1], true}
       else
-        msg_bodies
+        {msg_bodies, false}
       end
 
-    msg_body_structure
-    |> Enum.flat_map(&zip_body_with_structure_aux(msg_bodies, &1))
+    res =
+      msg_body_structure
+      |> Enum.flat_map(&zip_body_with_structure_aux(msg_bodies, &1))
+
+    if wrap_outer do
+      [res]
+    else
+      res
+    end
   end
 
   defp zip_body_with_structure_aux(body, structure) when is_map(structure) do

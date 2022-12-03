@@ -19,11 +19,9 @@ defmodule Yugo.Filter do
   # :recent is purposely omitted because it is too low-level
   @legal_flag_atoms [:seen, :answered, :flagged, :draft, :deleted]
 
-  @type flag :: :seen | :answered | :flagged | :draft | :deleted
-
   @type t :: %__MODULE__{
-          has_flags: [flag],
-          lacks_flags: [flag],
+          has_flags: [Yugo.flag()],
+          lacks_flags: [Yugo.flag()],
           subject_regex: nil | Regex.t(),
           sender_regex: nil | Regex.t()
         }
@@ -87,7 +85,7 @@ defmodule Yugo.Filter do
       Filter.all()
       |> Filter.has_flag(:seen)
   """
-  @spec has_flag(__MODULE__.t(), flag) :: __MODULE__.t()
+  @spec has_flag(__MODULE__.t(), Yugo.flag()) :: __MODULE__.t()
   def has_flag(%__MODULE__{} = filter, flag) when flag in @legal_flag_atoms do
     flag not in filter.lacks_flags ||
       raise "Cannot enforce a has_flag constraint for \"#{inspect(flag)}\" because this filter already has a lacks_flag constraint for the same flag."
@@ -111,7 +109,7 @@ defmodule Yugo.Filter do
       Filter.all()
       |> Filter.lacks_flag(:deleted)
   """
-  @spec lacks_flag(__MODULE__.t(), flag) :: __MODULE__.t()
+  @spec lacks_flag(__MODULE__.t(), Yugo.flag()) :: __MODULE__.t()
   def lacks_flag(%__MODULE__{} = filter, flag) when flag in @legal_flag_atoms do
     flag not in filter.has_flags ||
       raise "Cannot enforce a lacks_flag constraint for \"#{inspect(flag)}\" because this filter already has a has_flag constraint for the same flag."
