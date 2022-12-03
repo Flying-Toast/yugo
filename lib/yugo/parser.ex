@@ -103,7 +103,7 @@ defmodule Yugo.Parser do
         [uid_next: num]
 
       true ->
-        Logger.info(~s([Yugo] didn't parse response: "* OK #{inspect(resp)}"))
+        Logger.info(~s([Yugo] didn't parse response: "* OK #{resp}"))
         []
     end
   end
@@ -149,7 +149,7 @@ defmodule Yugo.Parser do
         |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
 
       true ->
-        Logger.info(~s([Yugo] didn't parse response: "* #{inspect(resp)}"))
+        Logger.info(~s([Yugo] didn't parse response: "* #{resp}"))
         []
     end
   end
