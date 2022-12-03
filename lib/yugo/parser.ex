@@ -169,7 +169,7 @@ defmodule Yugo.Parser do
 
     case name do
       "FLAGS" ->
-        {flags, rest} = parse_variable_length_list(rest, &flag_parser/1)
+        {flags, rest} = parse_variable_length_list(rest, &parse_flag/1)
         {{:flags, flags}, rest}
 
       #"ENVELOPE" ->
@@ -196,42 +196,37 @@ defmodule Yugo.Parser do
     parse_variable_length_list_aux(rest, parser, [parser_output | acc])
   end
 
-  defp flag_parser(rest) do
+  defp parse_flag(rest) do
     [flag, rest] = Regex.run(~r/^([^ \)]+)(.*)/is, rest, capture: :all_but_first)
     {flag, rest}
   end
 
-  defp string(<<?", _::binary>> = rest), do: quoted_string(rest)
-  defp string(<<?{, _::binary>> = rest), do: literal(rest)
+  defp parse_string(<<?", _::binary>> = rest), do: parse_quoted_string(rest)
+  defp parse_string(<<?{, _::binary>> = rest), do: parse_literal(rest)
 
-  def nstring(rest) do
+  def parse_nstring(rest) do
     if Regex.match?(~r/^NIL/is, rest) do
       <<_::binary-size(3), rest::binary>> = rest
       {nil, rest}
     else
-      string(rest)
+      parse_string(rest)
     end
   end
 
-  defp quoted_string(<<?", rest::binary>>) do
-    quoted_string_contents(rest, [])
+  defp parse_quoted_string(<<?", rest::binary>>) do
+    parse_quoted_string_aux(rest, [])
   end
 
-  defp quoted_string_contents(<<?", rest::binary>>, acc), do: {to_string(Enum.reverse(acc)), rest}
-  defp quoted_string_contents(<<"\\\"", rest::binary>>, acc), do: quoted_string_contents(rest, [?" | acc])
-  defp quoted_string_contents(<<"\\\\", rest::binary>>, acc), do: quoted_string_contents(rest, [?\\ | acc])
-  defp quoted_string_contents(<<ch, rest::binary>>, acc), do: quoted_string_contents(rest, [ch | acc])
+  defp parse_quoted_string_aux(<<?", rest::binary>>, acc), do: {to_string(Enum.reverse(acc)), rest}
+  defp parse_quoted_string_aux(<<"\\\"", rest::binary>>, acc), do: parse_quoted_string_aux(rest, [?" | acc])
+  defp parse_quoted_string_aux(<<"\\\\", rest::binary>>, acc), do: parse_quoted_string_aux(rest, [?\\ | acc])
+  defp parse_quoted_string_aux(<<ch, rest::binary>>, acc), do: parse_quoted_string_aux(rest, [ch | acc])
 
-  defp charlist_to_integer(c) do
-    {int, []} = :string.to_integer(c)
-    int
-  end
-
-  defp literal(<<?{, rest::binary>>), do: literal_aux(rest, [])
-  defp literal_aux(<<"}\r\n", rest::binary>>, acc) do
-    num_octets = charlist_to_integer(Enum.reverse(acc))
+  defp parse_literal(<<?{, rest::binary>>), do: parse_literal_aux(rest, [])
+  defp parse_literal_aux(<<"}\r\n", rest::binary>>, acc) do
+    {num_octets, []} = :string.to_integer(Enum.reverse(acc))
     <<octets::binary-size(num_octets), rest::binary>> = rest
     {octets, rest}
   end
-  defp literal_aux(<<n, rest::binary>>, acc), do: literal_aux(rest, [n | acc])
+  defp parse_literal_aux(<<n, rest::binary>>, acc), do: parse_literal_aux(rest, [n | acc])
 end
