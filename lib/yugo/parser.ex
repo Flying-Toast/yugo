@@ -158,6 +158,7 @@ defmodule Yugo.Parser do
 
   # parses the <msg-att> from the RFC's APRS, minus the outer parenthesis
   defp parse_msg_atts_aux("", acc), do: acc
+
   defp parse_msg_atts_aux(rest, acc) do
     {att, rest} = parse_one_att(rest)
     parse_msg_atts_aux(rest, [att | acc])
@@ -172,9 +173,38 @@ defmodule Yugo.Parser do
         {flags, rest} = parse_variable_length_list(rest, &parse_flag/1)
         {{:flags, flags}, rest}
 
-      #"ENVELOPE" ->
-      #  [date, subject, from, sender, reply_to, to, cc, bcc, in_reply_to, message_id]
-      #  [&nstring/1, &nstring/1,]
+      "ENVELOPE" ->
+        {[date, subject, from, sender, reply_to, to, cc, bcc, in_reply_to, message_id], rest} =
+          parse_list(
+            rest,
+            [
+              &parse_nstring/1,
+              &parse_nstring/1,
+              &parse_address_list/1,
+              &parse_address_list/1,
+              &parse_address_list/1,
+              &parse_address_list/1,
+              &parse_address_list/1,
+              &parse_address_list/1,
+              &parse_nstring/1,
+              &parse_nstring/1
+            ]
+          )
+
+        envelope = %{
+          date: rfc5322_to_datetime(date),
+          subject: subject,
+          from: from,
+          sender: sender,
+          reply_to: reply_to,
+          to: to,
+          cc: cc,
+          bcc: bcc,
+          in_reply_to: in_reply_to,
+          message_id: message_id
+        }
+
+        {{:envelope, envelope}, rest}
     end
   end
 
@@ -183,14 +213,20 @@ defmodule Yugo.Parser do
 
   defp parse_list_aux(<<?), rest::binary>>, [], acc), do: {Enum.reverse(acc), rest}
   defp parse_list_aux(<<?\s, rest::binary>>, parsers, acc), do: parse_list_aux(rest, parsers, acc)
+
   defp parse_list_aux(rest, [p | parsers], acc) do
     {parser_output, rest} = p.(rest)
     parse_list_aux(rest, parsers, [parser_output | acc])
   end
 
-  defp parse_variable_length_list(<<?(, rest::binary>>, parser), do: parse_variable_length_list_aux(rest, parser, [])
+  defp parse_variable_length_list(<<?(, rest::binary>>, parser),
+    do: parse_variable_length_list_aux(rest, parser, [])
+
   defp parse_variable_length_list_aux(<<?), rest::binary>>, _, acc), do: {Enum.reverse(acc), rest}
-  defp parse_variable_length_list_aux(<<?\s, rest::binary>>, parser, acc), do: parse_variable_length_list_aux(rest, parser, acc)
+
+  defp parse_variable_length_list_aux(<<?\s, rest::binary>>, parser, acc),
+    do: parse_variable_length_list_aux(rest, parser, acc)
+
   defp parse_variable_length_list_aux(rest, parser, acc) do
     {parser_output, rest} = parser.(rest)
     parse_variable_length_list_aux(rest, parser, [parser_output | acc])
@@ -199,6 +235,22 @@ defmodule Yugo.Parser do
   defp parse_flag(rest) do
     [flag, rest] = Regex.run(~r/^([^ \)]+)(.*)/is, rest, capture: :all_but_first)
     {flag, rest}
+  end
+
+  defp parse_address(rest) do
+    {[_name, _adl, mailbox, host], rest} =
+      parse_list(rest, [&parse_nstring/1, &parse_nstring/1, &parse_nstring/1, &parse_nstring/1])
+
+    {"#{String.downcase(mailbox)}@#{String.downcase(host)}", rest}
+  end
+
+  defp parse_address_list(rest) do
+    if Regex.match?(~r/^NIL/is, rest) do
+      <<_::binary-size(3), rest::binary>> = rest
+      {[], rest}
+    else
+      parse_variable_length_list(rest, &parse_address/1)
+    end
   end
 
   defp parse_string(<<?", _::binary>> = rest), do: parse_quoted_string(rest)
@@ -217,16 +269,55 @@ defmodule Yugo.Parser do
     parse_quoted_string_aux(rest, [])
   end
 
-  defp parse_quoted_string_aux(<<?", rest::binary>>, acc), do: {to_string(Enum.reverse(acc)), rest}
-  defp parse_quoted_string_aux(<<"\\\"", rest::binary>>, acc), do: parse_quoted_string_aux(rest, [?" | acc])
-  defp parse_quoted_string_aux(<<"\\\\", rest::binary>>, acc), do: parse_quoted_string_aux(rest, [?\\ | acc])
-  defp parse_quoted_string_aux(<<ch, rest::binary>>, acc), do: parse_quoted_string_aux(rest, [ch | acc])
+  defp parse_quoted_string_aux(<<?", rest::binary>>, acc),
+    do: {to_string(Enum.reverse(acc)), rest}
+
+  defp parse_quoted_string_aux(<<"\\\"", rest::binary>>, acc),
+    do: parse_quoted_string_aux(rest, [?" | acc])
+
+  defp parse_quoted_string_aux(<<"\\\\", rest::binary>>, acc),
+    do: parse_quoted_string_aux(rest, [?\\ | acc])
+
+  defp parse_quoted_string_aux(<<ch, rest::binary>>, acc),
+    do: parse_quoted_string_aux(rest, [ch | acc])
 
   defp parse_literal(<<?{, rest::binary>>), do: parse_literal_aux(rest, [])
+
   defp parse_literal_aux(<<"}\r\n", rest::binary>>, acc) do
     {num_octets, []} = :string.to_integer(Enum.reverse(acc))
     <<octets::binary-size(num_octets), rest::binary>> = rest
     {octets, rest}
   end
+
   defp parse_literal_aux(<<n, rest::binary>>, acc), do: parse_literal_aux(rest, [n | acc])
+
+  defp rfc5322_to_datetime(string) do
+    monthname = ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+
+    parts =
+      Regex.named_captures(
+        ~r/^(?:[^,]+,)?\s*(?<day>\d+)\s+(?<month>#{Enum.join(monthname, "|")})\s+(?<year>\d{4})\s+(?<hour>\d{2}):(?<minute>\d{2}):?(?<second>\d{2})?\s+(?<offset_sign>[+\-])(?<offset_hours>\d{2})(?<offset_minutes>\d{2})/i,
+        string
+      )
+
+    month = 1 + Enum.find_index(monthname, &(&1 == parts["month"]))
+
+    date =
+      Date.new!(
+        String.to_integer(parts["year"]),
+        month,
+        String.to_integer(parts["day"])
+      )
+
+    time =
+      Time.new!(
+        String.to_integer(parts["hour"]),
+        String.to_integer(parts["minute"]),
+        String.to_integer(parts["second"] || 0)
+      )
+
+    DateTime.new!(date, time)
+    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_hours"]), :hour)
+    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_minutes"]), :minute)
+  end
 end

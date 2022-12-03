@@ -29,8 +29,7 @@ defmodule Yugo.MixProject do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.29", only: :dev, runtime: false},
-      {:nimble_parsec, "~> 1.2"}
+      {:ex_doc, "~> 0.29", only: :dev, runtime: false}
     ]
   end
 end

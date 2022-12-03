@@ -413,6 +413,7 @@ defmodule Yugo.Client do
   defp package_message(msg) do
     msg
     |> Map.drop([:fetched])
+    # From is too easily spoofed, drop it so users use :sender instead
     |> update_in([:envelope], &Map.drop(&1, [:from]))
   end
 
