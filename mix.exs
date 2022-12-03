@@ -8,11 +8,10 @@ defmodule Yugo.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-
-      # Docs
+      description: "Yugo is an easy and high-level IMAP client library.",
+      package: package(),
       name: "Yugo",
       source_url: "https://github.com/Flying-Toast/yugo",
-      homepage_url: "https://github.com/Flying-Toast/yugo",
       docs: [
         main: "readme",
         extras: ["README.md"]
@@ -30,6 +29,13 @@ defmodule Yugo.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.29", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/Flying-Toast/yugo"}
     ]
   end
 end
