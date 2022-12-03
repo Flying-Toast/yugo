@@ -395,12 +395,17 @@ defmodule Yugo.Parser do
 
   defp parse_body_type_1part(rest) do
     parse_body_fld_param = fn rest ->
-      parse_variable_length_list(rest, &parse_string_pair/1)
+      if Regex.match?(~r/^NIL/is, rest) do
+        <<_::binary-size(3), rest::binary>> = rest
+        {nil, rest}
+      else
+        parse_variable_length_list(rest, &parse_string_pair/1)
+      end
     end
 
     # TODO: support body-type-msg
 
-    {[mime1, mime2, _params, _id, _desc, enc, _octets, _lines_opt], rest} =
+    {[mime1, mime2, _params, _id, _desc, enc, _octets | _rest_opt], rest} =
       parse_list(
         rest,
         [
