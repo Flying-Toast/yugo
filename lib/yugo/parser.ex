@@ -154,7 +154,7 @@ defmodule Yugo.Parser do
     end
   end
 
-  def parse_msg_atts(rest), do: parse_msg_atts_aux(rest, [])
+  defp parse_msg_atts(rest), do: parse_msg_atts_aux(rest, [])
 
   # parses the <msg-att> from the RFC's APRS, minus the outer parenthesis
   defp parse_msg_atts_aux("", acc), do: acc
@@ -256,13 +256,23 @@ defmodule Yugo.Parser do
   defp parse_string(<<?", _::binary>> = rest), do: parse_quoted_string(rest)
   defp parse_string(<<?{, _::binary>> = rest), do: parse_literal(rest)
 
-  def parse_nstring(rest) do
+  defp parse_nstring(rest) do
     if Regex.match?(~r/^NIL/is, rest) do
       <<_::binary-size(3), rest::binary>> = rest
       {nil, rest}
     else
       parse_string(rest)
     end
+  end
+
+  defp parse_number(rest), do: parse_number_aux(rest, [])
+
+  defp parse_number_aux(<<c, rest::binary>>, acc) when c in ?0..?9,
+    do: parse_number_aux(rest, [c | acc])
+
+  defp parse_number_aux(rest, acc) do
+    {int, []} = :string.to_integer(Enum.reverse(acc))
+    {int, rest}
   end
 
   defp parse_quoted_string(<<?", rest::binary>>) do
@@ -281,15 +291,11 @@ defmodule Yugo.Parser do
   defp parse_quoted_string_aux(<<ch, rest::binary>>, acc),
     do: parse_quoted_string_aux(rest, [ch | acc])
 
-  defp parse_literal(<<?{, rest::binary>>), do: parse_literal_aux(rest, [])
-
-  defp parse_literal_aux(<<"}\r\n", rest::binary>>, acc) do
-    {num_octets, []} = :string.to_integer(Enum.reverse(acc))
+  defp parse_literal(<<?{, rest::binary>>) do
+    {num_octets, <<"}\r\n", rest::binary>>} = parse_number(rest)
     <<octets::binary-size(num_octets), rest::binary>> = rest
     {octets, rest}
   end
-
-  defp parse_literal_aux(<<n, rest::binary>>, acc), do: parse_literal_aux(rest, [n | acc])
 
   defp rfc5322_to_datetime(string) do
     monthname = ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
