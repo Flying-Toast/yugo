@@ -154,9 +154,36 @@ defmodule Yugo.Parser do
     end
   end
 
+  def parse_msg_atts(rest), do: parse_msg_atts_aux(rest, [])
+
   # parses the <msg-att> from the RFC's APRS, minus the outer parenthesis
-  defp parse_msg_atts(data) do
+  defp parse_msg_atts_aux("", acc), do: acc
+  defp parse_msg_atts_aux(rest, acc) do
+    {att, rest} = parse_one_att(rest)
+    parse_msg_atts_aux(rest, [att | acc])
   end
+
+  defp parse_one_att(rest) do
+    [name, rest] = Regex.run(~r/^ ?(\S+) (.*)$/is, rest, capture: :all_but_first)
+    name = String.upcase(name)
+
+    case name do
+      "FLAGS" ->
+        {flags, rest} = parse_flags(rest)
+        {{:flags, flags}, rest}
+    end
+  end
+
+  defp parse_flags(<<?(, rest::binary>>), do: parse_flags_aux(rest, [], [])
+  defp parse_flags_aux(<<?\s, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [], [to_string(Enum.reverse(flag_acc)) | acc])
+  defp parse_flags_aux(<<?), rest::binary>>, flag_acc, acc) do
+    if flag_acc == '' do
+      {acc, rest}
+    else
+      {[to_string(Enum.reverse(flag_acc)) | acc], rest}
+    end
+  end
+  defp parse_flags_aux(<<c, rest::binary>>, flag_acc, acc), do: parse_flags_aux(rest, [c | flag_acc], acc)
 
   defp parse_list(<<?(, rest::binary>>, parsers) do
   end
@@ -165,8 +192,8 @@ defmodule Yugo.Parser do
   defp parse_list_items() do
   end
 
-  def string(<<?", _::binary>> = rest), do: quoted_string(rest)
-  def string(<<?{, _::binary>> = rest), do: literal(rest)
+  defp string(<<?", _::binary>> = rest), do: quoted_string(rest)
+  defp string(<<?{, _::binary>> = rest), do: literal(rest)
 
   defp quoted_string(<<?", rest::binary>>) do
     quoted_string_contents(rest, [])
