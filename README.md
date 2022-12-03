@@ -35,8 +35,7 @@ my_filter =
 Yugo.subscribe(:example_client, my_filter)
 
 receive do
-  {:email, client, message} ->
-    Yugo.set_flag(client, message, :seen)
+  {:email, _client, message} ->
     IO.puts("Received an email with subject `#{message.subject}`:")
     IO.inspect(message)
 end
