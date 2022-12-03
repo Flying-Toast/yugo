@@ -386,7 +386,7 @@ defmodule Yugo.Client do
 
       msg.fetched == :pre_body ->
         body_parts =
-          1..length(msg.body_structure)
+          Enum.flat_map(msg.body_structure, &body_part_paths(&1, []))
           |> Enum.map(&"BODY.PEEK[#{&1}]")
 
         conn
@@ -398,6 +398,19 @@ defmodule Yugo.Client do
         conn
         |> release_message(seqnum)
     end
+  end
+
+  defp body_part_paths(body_structure, acc) when is_map(body_structure) do
+    acc
+    |> Enum.reverse()
+    |> Enum.join(".")
+    |> List.wrap()
+  end
+
+  defp body_part_paths(body_structure, acc) when is_list(body_structure) do
+    body_structure
+    |> Enum.with_index(1)
+    |> Enum.flat_map(fn {bs, idx} -> body_part_paths(bs, [idx | acc]) end)
   end
 
   # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
@@ -415,23 +428,31 @@ defmodule Yugo.Client do
 
   # Preprocesses/cleans the message before it is sent to a subscriber
   defp package_message(msg) do
-    bodies =
-      Enum.zip_with(
-        msg.body_structure,
-        Map.values(msg.bodies),
-        fn %{encoding: encoding, mime_type: mime_type}, content ->
-          {encoding, mime_type, content}
-        end
-      )
-      |> Enum.map(fn {encoding, mime_type, content} ->
-        {mime_type, Parser.decode_body(content, encoding)}
-      end)
-
     msg
     |> Map.merge(msg.envelope)
-    |> put_in([:bodies], bodies)
+    |> put_in(
+      [:bodies],
+      zip_body_with_structure(msg.bodies, msg.body_structure)
+    )
     # From is too easily spoofed, drop it so users use :sender instead
     |> Map.drop([:from, :fetched, :body_structure, :envelope])
+  end
+
+  defp zip_body_with_structure(msg_bodies, msg_body_structure) do
+    msg_body_structure
+    |> Enum.flat_map(&zip_body_with_structure_aux(msg_bodies, &1))
+  end
+
+  defp zip_body_with_structure_aux(body, structure) when is_map(structure) do
+    %{encoding: encoding, mime_type: mime_type} = structure
+
+    [{mime_type, Parser.decode_body(body, encoding)}]
+  end
+
+  defp zip_body_with_structure_aux(bodies, structure) when is_list(structure) do
+    structure
+    |> Enum.with_index(1)
+    |> Enum.map(fn {s, body_num} -> zip_body_with_structure_aux(bodies[body_num], s) end)
   end
 
   # FETCHes the message attributes needed to apply filters
@@ -549,11 +570,12 @@ defmodule Yugo.Client do
 
       {:fetch, {seq_num, :body_content, {body_number, content}}} ->
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          bodies =
+            conn.unprocessed_messages[seq_num][:bodies]
+            |> put_part_in(body_number, content)
+
           conn
-          |> update_in(
-            [Access.key!(:unprocessed_messages), seq_num, :bodies],
-            &Map.put(&1 || %{}, body_number, content)
-          )
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :bodies], bodies)
         else
           conn
         end
@@ -564,6 +586,12 @@ defmodule Yugo.Client do
 
   defp apply_actions(conn, [action | rest]),
     do: conn |> apply_action(action) |> apply_actions(rest)
+
+  defp put_part_in(nil, path, content), do: put_part_in(%{}, path, content)
+  defp put_part_in(map, [key], content), do: Map.put(map, key, content)
+
+  defp put_part_in(map, [key | path], content),
+    do: Map.put(map, key, put_part_in(map[key], path, content))
 
   defp send_raw(conn, stuff) do
     if conn.tls do

@@ -21,6 +21,8 @@ defmodule Yugo.Parser do
         Base.decode64!(body)
 
       "QUOTED-PRINTABLE" ->
+        body = String.replace(body, "=\r\n", "")
+
         Regex.replace(~r/=(..)/, body, fn _, x ->
           {n, _} = Integer.parse(x, 16)
           n
@@ -219,41 +221,17 @@ defmodule Yugo.Parser do
         {{:envelope, envelope}, rest}
 
       name == "BODY" ->
-        parse_body_fld_param = fn rest ->
-          parse_variable_length_list(rest, &parse_string_pair/1)
-        end
-
-        # TODO: support body-type-mpart and body-type-msg
-
-        {[mime1, mime2, _params, _id, _desc, enc, _octets, _lines_opt], rest} =
-          parse_list(
-            rest,
-            [
-              &parse_string/1,
-              &parse_string/1,
-              parse_body_fld_param,
-              &parse_nstring/1,
-              &parse_nstring/1,
-              &parse_string/1,
-              &parse_number/1,
-              &parse_optional_number/1
-            ],
-            :lax
-          )
-
-        mime_type = "#{String.downcase(mime1)}/#{String.downcase(mime2)}"
-
-        body = %{
-          mime_type: mime_type,
-          encoding: String.upcase(enc)
-        }
-
-        {{:body, body}, rest}
+        parse_body(rest)
 
       Regex.match?(~r/BODY\[/, name) ->
-        [body_number] = Regex.run(~r/BODY\[(\d+)\]/, name, capture: :all_but_first)
-        body_number = String.to_integer(body_number)
-        {content, "" = rest} = parse_string(rest)
+        [body_number] = Regex.run(~r/BODY\[([0-9.]+)\]/, name, capture: :all_but_first)
+
+        body_number =
+          body_number
+          |> String.split(".")
+          |> Enum.map(&String.to_integer/1)
+
+        {content, rest} = parse_string(rest)
         {{:body_content, {body_number, content}}, rest}
     end
   end
@@ -391,5 +369,58 @@ defmodule Yugo.Parser do
     DateTime.new!(date, time)
     |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_hours"]), :hour)
     |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_minutes"]), :minute)
+  end
+
+  defp parse_body(<<"((", _::binary>> = rest) do
+    <<?(, rest::binary>> = rest
+    {result, <<?), rest::binary>>} = parse_body_type_mpart(rest)
+    {result, rest}
+  end
+
+  defp parse_body(rest), do: parse_body_type_1part(rest)
+
+  defp parse_body_type_mpart(rest), do: parse_body_type_mpart_aux(rest, [])
+
+  defp parse_body_type_mpart_aux(<<?\s, rest::binary>>, acc) do
+    {_media_subtype, rest} = parse_string(rest)
+    {{:body, acc}, rest}
+  end
+
+  defp parse_body_type_mpart_aux(rest, acc) do
+    {{:body, bodies}, rest} = parse_body(rest)
+    parse_body_type_mpart_aux(rest, acc ++ [bodies])
+  end
+
+  defp parse_body_type_1part(rest) do
+    parse_body_fld_param = fn rest ->
+      parse_variable_length_list(rest, &parse_string_pair/1)
+    end
+
+    # TODO: support body-type-msg
+
+    {[mime1, mime2, _params, _id, _desc, enc, _octets, _lines_opt], rest} =
+      parse_list(
+        rest,
+        [
+          &parse_string/1,
+          &parse_string/1,
+          parse_body_fld_param,
+          &parse_nstring/1,
+          &parse_nstring/1,
+          &parse_string/1,
+          &parse_number/1,
+          &parse_optional_number/1
+        ],
+        :lax
+      )
+
+    mime_type = "#{String.downcase(mime1)}/#{String.downcase(mime2)}"
+
+    body = %{
+      mime_type: mime_type,
+      encoding: String.upcase(enc)
+    }
+
+    {{:body, body}, rest}
   end
 end
