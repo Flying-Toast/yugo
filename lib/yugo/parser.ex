@@ -168,12 +168,12 @@ defmodule Yugo.Parser do
     [name, rest] = Regex.run(~r/^ ?(\S+) (.*)$/is, rest, capture: :all_but_first)
     name = String.upcase(name)
 
-    case name do
-      "FLAGS" ->
+    cond do
+      name == "FLAGS" ->
         {flags, rest} = parse_variable_length_list(rest, &parse_flag/1)
         {{:flags, flags}, rest}
 
-      "ENVELOPE" ->
+      name == "ENVELOPE" ->
         {[date, subject, from, sender, reply_to, to, cc, bcc, in_reply_to, message_id], rest} =
           parse_list(
             rest,
@@ -206,7 +206,7 @@ defmodule Yugo.Parser do
 
         {{:envelope, envelope}, rest}
 
-      "BODY" ->
+      name == "BODY" ->
         parse_body_fld_param = fn rest ->
           parse_variable_length_list(rest, &parse_string_pair/1)
         end
@@ -237,6 +237,12 @@ defmodule Yugo.Parser do
         }
 
         {{:body, body}, rest}
+
+      Regex.match?(~r/BODY\[/, name) ->
+        [body_number] = Regex.run(~r/BODY\[(\d+)\]/, name, capture: :all_but_first)
+        body_number = String.to_integer(body_number)
+        {content, "" = rest} = parse_string(rest)
+        {{:body_content, {body_number, content}}, rest}
     end
   end
 

@@ -211,7 +211,8 @@ defmodule Yugo.Client do
       case Regex.run(~r/\{(\d+)\}\r\n$/, prev, capture: :all_but_first) do
         [n] ->
           # ...unless there is another literal.
-          n = String.to_integer(n) + 1
+          # +2 so that we make sure we get the full command (either the last 2 \r\n, or the next part of the command)
+          n = String.to_integer(n) + 2
           recv_literals(conn, acc, n)
 
         _ ->
@@ -528,6 +529,17 @@ defmodule Yugo.Client do
           |> update_in(
             [Access.key!(:unprocessed_messages), seq_num, :body_structure],
             &((&1 || []) ++ [body])
+          )
+        else
+          conn
+        end
+
+      {:fetch, {seq_num, :body_content, {body_number, content}}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> update_in(
+            [Access.key!(:unprocessed_messages), seq_num, :bodies],
+            &Map.put(&1 || %{}, body_number, content)
           )
         else
           conn
