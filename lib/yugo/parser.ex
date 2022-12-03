@@ -205,6 +205,31 @@ defmodule Yugo.Parser do
         }
 
         {{:envelope, envelope}, rest}
+
+      "BODY" ->
+        parse_body_fld_param = fn rest ->
+          parse_variable_length_list(rest, &parse_string_pair/1)
+        end
+
+        {[mime1, mime2, _params, _id, _desc, enc, _octets], rest} =
+          parse_list(rest, [
+            &parse_string/1,
+            &parse_string/1,
+            parse_body_fld_param,
+            &parse_nstring/1,
+            &parse_nstring/1,
+            &parse_string/1,
+            &parse_number/1
+          ])
+
+        mime_type = "#{String.downcase(mime1)}/#{String.downcase(mime2)}"
+
+        body = %{
+          mime_type: mime_type,
+          encoding: enc
+        }
+
+        {{:body, body}, rest}
     end
   end
 
@@ -235,6 +260,13 @@ defmodule Yugo.Parser do
   defp parse_flag(rest) do
     [flag, rest] = Regex.run(~r/^([^ \)]+)(.*)/is, rest, capture: :all_but_first)
     {flag, rest}
+  end
+
+  # e.g. for key-value pairs in <body-fld-param>
+  defp parse_string_pair(rest) do
+    {a, <<?\s, rest::binary>>} = parse_string(rest)
+    {b, rest} = parse_string(rest)
+    {{a, b}, rest}
   end
 
   defp parse_address(rest) do
