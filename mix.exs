@@ -13,6 +13,7 @@ defmodule Yugo.MixProject do
       name: "Yugo",
       source_url: "https://github.com/Flying-Toast/yugo",
       docs: [
+        source_ref: "master",
         main: "readme",
         extras: ["README.md"]
       ]
