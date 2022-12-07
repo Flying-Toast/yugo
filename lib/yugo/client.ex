@@ -57,6 +57,14 @@ defmodule Yugo.Client do
     you can pass the name of one as a string. A single [`Client`](`Yugo.Client`) can only monitor a single mailbox -
     to monitor multiple mailboxes, you need to start multiple [`Client`](`Yugo.Client`)s.
 
+  ### Advanced Arguments
+
+    The following options are provided because they can be useful, but in most cases you won't
+    need to change them from the default, unless you know what you're doing.
+
+    * `:ssl_verify` - The `:verify` option passed to `:ssl.connect/2`. Can be `:verify_peer` or `:verify_none`.
+    Defaults to `:verify_peer`.
+
   ## Example
 
   Normally, you do not call this function directly, but rather run it as part of your application's supervision tree.
@@ -69,6 +77,7 @@ defmodule Yugo.Client do
           name: name,
           port: 1..65535,
           tls: boolean,
+          ssl_verify: :verify_none | :verify_peer,
           mailbox: String.t(),
           server: String.t()
         ) :: GenServer.on_start()
@@ -77,24 +86,28 @@ defmodule Yugo.Client do
       Keyword.has_key?(args, required) || raise "Missing required argument `:#{required}`."
     end
 
-    init_arg =
+    args =
       args
       |> Keyword.put_new(:port, 993)
       |> Keyword.put_new(:tls, true)
       |> Keyword.put_new(:mailbox, "INBOX")
+      |> Keyword.put_new(:ssl_verify, :verify_peer)
       |> Keyword.update!(:server, &to_charlist/1)
 
+    args[:ssl_verify] in [:verify_peer, :verify_none] ||
+      raise ":ssl_verify option must be one of: :verify_peer, :verify_none"
+
     name = {:via, Registry, {Yugo.Registry, args[:name]}}
-    GenServer.start_link(__MODULE__, init_arg, name: name)
+    GenServer.start_link(__MODULE__, args, name: name)
   end
 
   @common_connect_opts [packet: :line, active: :once, mode: :binary]
 
-  defp ssl_opts(server),
+  defp ssl_opts(server, ssl_verify),
     do:
       [
         server_name_indication: server,
-        verify: :verify_peer,
+        verify: ssl_verify,
         cacerts: :public_key.cacerts_get()
       ] ++ @common_connect_opts
 
@@ -105,7 +118,7 @@ defmodule Yugo.Client do
         :ssl.connect(
           args[:server],
           args[:port],
-          ssl_opts(args[:server])
+          ssl_opts(args[:server], args[:ssl_verify])
         )
       else
         :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
@@ -118,7 +131,8 @@ defmodule Yugo.Client do
       server: args[:server],
       username: args[:username],
       password: args[:password],
-      mailbox: args[:mailbox]
+      mailbox: args[:mailbox],
+      ssl_verify: args[:ssl_verify]
     }
 
     {:ok, conn}
@@ -275,7 +289,7 @@ defmodule Yugo.Client do
   end
 
   defp on_starttls_response(conn, :ok, _text) do
-    {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server), :infinity)
+    {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server, conn.ssl_verify), :infinity)
 
     %{conn | tls: true, socket: socket}
     |> do_login()

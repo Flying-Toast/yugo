@@ -32,11 +32,12 @@ defmodule Yugo.Conn do
           idle_timed_out: boolean,
           filters: [{Yugo.Filter.t(), pid}],
           unprocessed_messages: %{integer: %{}},
-          attrs_needed_by_filters: String.t()
+          attrs_needed_by_filters: String.t(),
+          ssl_verify: :verify_none | :verify_peer
         }
 
   @derive {Inspect, except: [:password]}
-  @enforce_keys [:my_name, :tls, :socket, :username, :password, :server, :mailbox]
+  @enforce_keys [:my_name, :tls, :socket, :username, :password, :server, :mailbox, :ssl_verify]
   defstruct [
     :my_name,
     :tls,
@@ -46,6 +47,7 @@ defmodule Yugo.Conn do
     :mailbox,
     # only stored temporarily; gets cleared from memory after sending LOGIN
     :password,
+    :ssl_verify,
     next_cmd_tag: 0,
     capabilities: [],
     got_server_greeting: false,
