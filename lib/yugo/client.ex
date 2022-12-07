@@ -180,7 +180,8 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_info({close_message, _sock}, conn) when close_message in [:tcp_closed, :ssl_closed] do
+  def handle_info({close_message, _sock}, conn)
+      when close_message in [:tcp_closed, :ssl_closed] do
     {:stop, :normal, conn}
   end
 
