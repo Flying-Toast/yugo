@@ -1,5 +1,5 @@
 defmodule Yugo.ParserTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Yugo.Parser
   doctest Yugo.Parser
 

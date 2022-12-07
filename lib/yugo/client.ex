@@ -179,6 +179,11 @@ defmodule Yugo.Client do
     {:noreply, conn}
   end
 
+  @impl true
+  def handle_info({close_message, _sock}, conn) when close_message in [:tcp_closed, :ssl_closed] do
+    {:stop, :normal, conn}
+  end
+
   @noop_poll_interval 5000
   @impl true
   def handle_info(:poll_with_noop, conn) do
