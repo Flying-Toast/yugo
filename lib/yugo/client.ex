@@ -429,7 +429,7 @@ defmodule Yugo.Client do
 
   defp body_part_paths(body_structure, path_acc \\ []) do
     case body_structure do
-      {:onepart, body} ->
+      {:onepart, _body} ->
         path =
           if path_acc == [] do
             "1"
@@ -471,9 +471,8 @@ defmodule Yugo.Client do
   end
 
   defp normalize_structure(msg_body, msg_structure) do
-    combined =
-      combine_bodies_if_multipart(msg_body)
-      |> get_part_structures(msg_structure)
+    combine_bodies_if_multipart(msg_body)
+    |> get_part_structures(msg_structure)
   end
 
   defp combine_bodies_if_multipart(_, depth \\ 0)
@@ -634,12 +633,6 @@ defmodule Yugo.Client do
 
   defp apply_actions(conn, [action | rest]),
     do: conn |> apply_action(action) |> apply_actions(rest)
-
-  defp put_part_in(nil, path, content), do: put_part_in(%{}, path, content)
-  defp put_part_in(map, [key], content), do: Map.put(map, key, content)
-
-  defp put_part_in(map, [key | path], content),
-    do: Map.put(map, key, put_part_in(map[key], path, content))
 
   defp send_raw(conn, stuff) do
     if conn.tls do
