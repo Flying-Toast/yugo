@@ -25,7 +25,7 @@ defmodule Yugo.ClientTest do
     C: DONE
     S: 4 OK idle done
     C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
-    S: * 2 FETCH (FLAGS () BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1])
     S: * 2 fetcH (BODY[1] {47}
@@ -52,7 +52,7 @@ defmodule Yugo.ClientTest do
                    ],
                    cc: [],
                    date: ~U[2022-12-07 13:02:41Z],
-                   flags: [],
+                   flags: [:seen],
                    in_reply_to: nil,
                    message_id: "fjaelwkjfi oaf<$ ))) \"",
                    reply_to: ["marge@simpsons-family.com"],
