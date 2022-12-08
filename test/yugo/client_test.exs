@@ -117,8 +117,8 @@ defmodule Yugo.ClientTest do
     C: DONE
     S: 4 OK idle done
     C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
-    S: * 2 FETCH (FLAGS () BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
-    NIL "fizz" "buzz.com")) "123 abc 456" {0}
+    S: * 2 FETCH (FLAGS () BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
+    NIL "fizz" "buzz.com")) NIL "123 abc 456" {0}
     ))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1])
@@ -130,13 +130,13 @@ defmodule Yugo.ClientTest do
       {:email, _client, msg} ->
         assert msg ==
                  %{
-                   bcc: ["foo@bar.com", "bar@foo.com", "fizz@buzz.com"],
+                   bcc: [],
                    bodies: [
                      [
                        {"text/plain", "hello"}
                      ]
                    ],
-                   cc: [],
+                   cc: ["foo@bar.com", "bar@foo.com", "fizz@buzz.com"],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [],
                    in_reply_to: "123 abc 456",
