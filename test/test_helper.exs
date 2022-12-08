@@ -5,9 +5,12 @@ defmodule Helpers.Client do
 
   def assert_comms(socket, comms) do
     comms =
-      comms
-      |> String.split("\n", trim: true)
-      |> Enum.map(&(&1 <> "\r\n"))
+      ("\n" <> comms)
+      |> String.replace(~r/\n$/, "")
+      |> String.replace("\n", "\r\n")
+      |> String.split(~r/\r\n[CS]:/, trim: true, include_captures: true)
+      |> Enum.chunk_every(2)
+      |> Enum.map(fn [a, b] -> String.trim(a) <> b <> "\r\n" end)
 
     assert_comms_aux(socket, comms)
   end
@@ -84,7 +87,7 @@ defmodule Helpers.Client do
       C: #{offset + 3} SELECT "INBOX"
       S: * FLAGS (\Answered \Flagged \Deleted \Seen \Draft)
       S: * OK [PERMANENTFLAGS (\Answered \Flagged \Deleted \Seen \Draft \*)] Flags permitted.
-      S: * 0 EXISTS
+      S: * 1 EXISTS
       S: * 0 RECENT
       S: * OK [UIDVALIDITY 1669484757] UIDs valid
       S: * OK [UIDNEXT 179] Predicted next UID
@@ -113,7 +116,7 @@ defmodule Helpers.Client do
       ssl_verify: :verify_none
     ]
 
-    spawn_link(fn -> {:ok, _pid} = Yugo.Client.start_link(opts) end)
+    start_link_supervised!({Yugo.Client, opts})
     Yugo.subscribe(name)
 
     {:ok, socket} = :gen_tcp.accept(listener, 1000)
@@ -145,7 +148,7 @@ defmodule Helpers.Client do
       ssl_verify: :verify_none
     ]
 
-    spawn_link(fn -> {:ok, _pid} = Yugo.Client.start_link(opts) end)
+    start_link_supervised!({Yugo.Client, opts})
     Yugo.subscribe(name)
 
     {:ok, socket} = :ssl.transport_accept(listener, 1000)
