@@ -12,11 +12,9 @@ defmodule Yugo.ClientTest do
 
   test "cancels IDLE" do
     ssl_server()
-    |> assert_comms(
-      ~S"""
-      S: * 1 EXISTS
-      C: DONE
-      """
-    )
+    |> assert_comms(~S"""
+    S: * 1 EXISTS
+    C: DONE
+    """)
   end
 end

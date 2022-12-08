@@ -43,24 +43,20 @@ defmodule Helpers.Client do
 
   def do_hello(socket) do
     socket
-    |> assert_comms(
-      ~S"""
-      S: * OK hello
-      C: 0 CAPABILITY
-      S: * CAPABILITY IMAP4rev1 AUTH=PLAIN IDLE STARTTLS
-      S: 0 ok capability done
-      """
-    )
+    |> assert_comms(~S"""
+    S: * OK hello
+    C: 0 CAPABILITY
+    S: * CAPABILITY IMAP4rev1 AUTH=PLAIN IDLE STARTTLS
+    S: 0 ok capability done
+    """)
   end
 
   def do_starttls(socket) do
     socket
-    |> assert_comms(
-      ~S"""
-      C: 1 STARTTLS
-      S: 1 OK begin tls handshake...
-      """
-    )
+    |> assert_comms(~S"""
+    C: 1 STARTTLS
+    S: 1 OK begin tls handshake...
+    """)
 
     {:ok, socket} =
       :ssl.handshake(
@@ -127,7 +123,15 @@ defmodule Helpers.Client do
   end
 
   defp accept_ssl() do
-    {:ok, listener} = :ssl.listen(0, packet: :line, active: false, mode: :binary, certfile: Path.join(__DIR__, "cert.pem"), keyfile: Path.join(__DIR__, "key.pem"))
+    {:ok, listener} =
+      :ssl.listen(0,
+        packet: :line,
+        active: false,
+        mode: :binary,
+        certfile: Path.join(__DIR__, "cert.pem"),
+        keyfile: Path.join(__DIR__, "key.pem")
+      )
+
     {:ok, {_addr, port}} = :ssl.sockname(listener)
     name = :crypto.strong_rand_bytes(5)
 
