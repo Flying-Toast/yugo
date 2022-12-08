@@ -113,29 +113,8 @@ defmodule Yugo.Client do
 
   @impl true
   def init(args) do
-    {:ok, socket} =
-      if args[:tls] do
-        :ssl.connect(
-          args[:server],
-          args[:port],
-          ssl_opts(args[:server], args[:ssl_verify])
-        )
-      else
-        :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
-      end
-
-    conn = %Conn{
-      my_name: args[:name],
-      tls: args[:tls],
-      socket: socket,
-      server: args[:server],
-      username: args[:username],
-      password: args[:password],
-      mailbox: args[:mailbox],
-      ssl_verify: args[:ssl_verify]
-    }
-
-    {:ok, conn}
+    send(self(), {:do_init, args})
+    {:ok, nil}
   end
 
   @impl true
@@ -158,6 +137,33 @@ defmodule Yugo.Client do
     conn =
       %{conn | filters: Enum.reject(conn.filters, &(elem(&1, 1) == pid))}
       |> update_attrs_needed_by_filters()
+
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_info({:do_init, args}, _state) do
+    {:ok, socket} =
+      if args[:tls] do
+        :ssl.connect(
+          args[:server],
+          args[:port],
+          ssl_opts(args[:server], args[:ssl_verify])
+        )
+      else
+        :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
+      end
+
+    conn = %Conn{
+      my_name: args[:name],
+      tls: args[:tls],
+      socket: socket,
+      server: args[:server],
+      username: args[:username],
+      password: args[:password],
+      mailbox: args[:mailbox],
+      ssl_verify: args[:ssl_verify]
+    }
 
     {:noreply, conn}
   end
