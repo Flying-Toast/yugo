@@ -463,34 +463,38 @@ defmodule Yugo.Client do
 
   # Preprocesses/cleans the message before it is sent to a subscriber
   defp package_message(msg) do
-    body = normalize_structure(msg.body, msg.body_structure)
-
     msg
     |> Map.merge(msg.envelope)
     # From is too easily spoofed, drop it so users use :sender instead
     |> Map.drop([:from, :fetched, :body_structure, :envelope])
-    |> Map.put(:body, body)
+    |> Map.put(:body, normalize_structure(msg.body, msg.body_structure))
   end
 
-  defp normalize_structure(body, {:onepart, map}) do
-    [{[1], content}] = body
-    {map.mime_type, Parser.decode_body(content, map.encoding)}
+  defp normalize_structure(msg_body, msg_structure) do
+    combined =
+      combine_bodies_if_multipart(msg_body)
+      |> get_part_structures(msg_structure)
   end
 
-  defp normalize_structure(bodies, {:multipart, _} = structure) do
-    Enum.map(bodies, fn {path, content} ->
-      {:onepart, struct} = get_structure_at_path(structure, path)
-      {struct, content}
-    end)
-    |> Enum.map(fn {struct, cont} ->
-      {struct.mime_type, Parser.decode_body(cont, struct.encoding)}
-    end)
+  defp combine_bodies_if_multipart(_, depth \\ 0)
+  defp combine_bodies_if_multipart([body], _depth), do: body
+  defp combine_bodies_if_multipart(body, _depth) when is_tuple(body), do: body
+
+  defp combine_bodies_if_multipart(bodies, depth) when is_list(bodies) and length(bodies) > 1 do
+    bodies
+    |> Enum.group_by(fn {path, _} -> Enum.at(path, depth) end)
+    |> Map.values()
+    |> Enum.map(&combine_bodies_if_multipart(&1, depth + 1))
   end
 
-  defp get_structure_at_path({:multipart, structure}, [idx]), do: Enum.at(structure, idx - 1)
+  defp get_part_structures({_, content}, {:onepart, map}),
+    do: {map.mime_type, Parser.decode_body(content, map.encoding)}
 
-  defp get_structure_at_path({:multipart, structure}, [next | acc]),
-    do: get_structure_at_path(Enum.at(structure, next - 1), acc)
+  defp get_part_structures({[idx | path], content}, {:multipart, parts}),
+    do: get_part_structures({path, content}, Enum.at(parts, idx - 1))
+
+  defp get_part_structures(bodies, structure) when is_list(bodies),
+    do: Enum.map(bodies, &get_part_structures(&1, structure))
 
   # FETCHes the message attributes needed to apply filters
   defp fetch_message(conn, seqnum) do
@@ -609,12 +613,17 @@ defmodule Yugo.Client do
         msg = Map.get(conn.unprocessed_messages, seq_num)
 
         if msg do
-          body = msg[:body] || []
+          body =
+            case msg.body_structure do
+              {:onepart, _} ->
+                {body_number, content}
+
+              {:multipart, _} ->
+                [{body_number, content} | msg[:body] || []]
+            end
 
           conn
-          |> put_in([Access.key!(:unprocessed_messages), seq_num, :body], [
-            {body_number, content} | body
-          ])
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :body], body)
         else
           conn
         end

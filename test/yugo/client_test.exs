@@ -28,14 +28,9 @@ defmodule Yugo.ClientTest do
     S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1])
-    S: * 2 fetcH (BODY[1] {47}
-    Hello!
-
-    this is the message text.
-    Bye!
-
-
-    )
+    S: * 2 fetcH (BODY[1] {14}
+    Hello 123
+    456)
     S: 6 ok fetched
     """)
 
@@ -44,8 +39,7 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   body:
-                     {"text/plain", "Hello!\r\n\r\nthis is the message text.\r\nBye!\r\n\r\n\r\n"},
+                   body: {"text/plain", "Hello 123\r\n456"},
                    cc: [],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [:seen],
@@ -178,6 +172,59 @@ defmodule Yugo.ClientTest do
                  subject: "An HTML email",
                  to: ["bar@foo.com"]
                }
+    end
+  end
+
+  test "nested multipart body" do
+    onepart = ~S|("x-foo" "x-bar" nil nil nil "7bit" 10)|
+    mpart1 = ~s|(#{onepart}#{onepart} "alternative")|
+    mpart = ~s|(#{onepart}#{onepart}#{mpart1} "alternative")|
+    body_structure = ~s|(#{mpart}#{mpart1}#{onepart} "alternative")|
+
+    ssl_server()
+    |> assert_comms(~s"""
+    S: * 2 exists
+    C: DONE
+    S: 4 ok * * * ok ok ok ok
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS () BODY #{body_structure} ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL nil niL))
+    S: 5 OK OK OK
+    C: 6 FETCH 2 (BODY.PEEK[1.1] BODY.PEEK[1.2] BODY.PEEK[1.3.1] BODY.PEEK[1.3.2] BODY.PEEK[2.1] BODY.PEEK[2.2] BODY.PEEK[3])
+    S: * 2 fetch (BODY[1.1] "this is 1.1" BODY[1.2] "this is 1.2" BODY[1.3.1] "this is 1.3.1" body[1.3.2] "this is 1.3.2" body[2.1] "this is 2.1" body[2.2] "this is 2.2" body[3] "this is 3")
+    S: 6 ok fetchified
+    C: 7 IDLE
+    """)
+
+    receive do
+      {:email, _client, msg} ->
+        assert msg ==
+                 %{
+                   bcc: [],
+                   body: [
+                     [
+                       {"x-foo/x-bar", "this is 1.1"},
+                       {"x-foo/x-bar", "this is 1.2"},
+                       [
+                         {"x-foo/x-bar", "this is 1.3.1"},
+                         {"x-foo/x-bar", "this is 1.3.2"}
+                       ]
+                     ],
+                     [
+                       {"x-foo/x-bar", "this is 2.1"},
+                       {"x-foo/x-bar", "this is 2.2"}
+                     ],
+                     {"x-foo/x-bar", "this is 3"}
+                   ],
+                   cc: [],
+                   date: ~U[2022-12-07 13:02:41Z],
+                   flags: [],
+                   in_reply_to: nil,
+                   message_id: nil,
+                   reply_to: ["marge@simpsons-family.com"],
+                   sender: ["marge@simpsons-family.com"],
+                   subject: nil,
+                   to: ["homer@simpsons-family.com"]
+                 }
     end
   end
 end
