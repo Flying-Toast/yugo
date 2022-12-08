@@ -78,9 +78,7 @@ defmodule Yugo.ClientTest do
 
     See the attached file for an Elixir hello world.
 
-     BODY[2] {78}
-    ZGVmbW9kdWxlIEhlbGxvIGRvCiAgZGVmIGdyZWV0IGRvCiAgICA6d29ybGQKICBlbmQKZW5kCg==
-    )
+     BODY[2] "ZGVmbW9kdWxlIEhlbGxvIGRvCiAgZGVmIGdyZWV0IGRvCiAgICA6d29ybGQKICBlbmQKZW5kCg==")
     S: 6 ok .
     """)
 
