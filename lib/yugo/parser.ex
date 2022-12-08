@@ -385,7 +385,7 @@ defmodule Yugo.Parser do
 
   defp parse_body_type_mpart_aux(<<?\s, rest::binary>>, acc) do
     {_media_subtype, rest} = parse_string(rest)
-    {{:body, acc}, rest}
+    {{:body, {:multipart, acc}}, rest}
   end
 
   defp parse_body_type_mpart_aux(rest, acc) do
@@ -428,6 +428,6 @@ defmodule Yugo.Parser do
       encoding: String.upcase(enc)
     }
 
-    {{:body, body}, rest}
+    {{:body, {:onepart, body}}, rest}
   end
 end

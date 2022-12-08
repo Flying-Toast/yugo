@@ -44,12 +44,8 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   bodies: [
-                     [
-                       {"text/plain",
-                        "Hello!\r\n\r\nthis is the message text.\r\nBye!\r\n\r\n\r\n"}
-                     ]
-                   ],
+                   body:
+                     {"text/plain", "Hello!\r\n\r\nthis is the message text.\r\nBye!\r\n\r\n\r\n"},
                    cc: [],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [:seen],
@@ -87,15 +83,11 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   bodies: [
-                     [
-                       {"text/plain",
-                        "Hello!\r\n\r\nSee the attached file for an Elixir hello world.\r\n\r\n"}
-                     ],
-                     [
-                       {"text/x-elixir",
-                        "defmodule Hello do\n  def greet do\n    :world\n  end\nend\n"}
-                     ]
+                   body: [
+                     {"text/plain",
+                      "Hello!\r\n\r\nSee the attached file for an Elixir hello world.\r\n\r\n"},
+                     {"text/x-elixir",
+                      "defmodule Hello do\n  def greet do\n    :world\n  end\nend\n"}
                    ],
                    cc: [],
                    date: ~U[2022-12-07 18:21:35Z],
@@ -131,11 +123,7 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   bodies: [
-                     [
-                       {"text/plain", "hello"}
-                     ]
-                   ],
+                   body: {"text/plain", "hello"},
                    cc: ["foo@bar.com", "bar@foo.com", "fizz@buzz.com"],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [],
@@ -146,6 +134,50 @@ defmodule Yugo.ClientTest do
                    subject: "Hello! (subject)",
                    to: ["homer@simpsons-family.com"]
                  }
+    end
+  end
+
+  test "html body" do
+    ssl_server()
+    |> assert_comms(~S"""
+    S: * 2 exists
+    C: DONE
+    S: 4 ok * * * ok ok ok ok
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 42 4)("text" "html" ("charset" "us-ascii") NIL NIL "7bit" 206 0) "alternative") ENVELOPE ("Thu, 08 Dec 2022 09:59:48 -0500" "An HTML email" (("Aych T. Emmel" NIL "person" "domain.com")) ((NIL NIL "person" "domain.com")) ((NIL NIL "foo" "bar.com")) ((NIL NIL "bar" "foo.com")) NIL NIL NIL "<><><><><>"))
+    S: 5 OK Fetch completed (0.001 + 0.000 secs).
+    C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
+    S: * 2 FETCH (BODY[1] {42}
+    _Wow!!_
+
+    This *email* has rich text!
+
+     BODY[2] {206}
+    <div id="geary-body" dir="auto"><u><font size="1">Wow!!</font></u><div><br></div><div>This <b>email</b>&nbsp;has <font face="monospace" color="#f5c211">rich text</font><font face="sans">!</font></div></div>)
+    6 OK Fetch completed (0.001 + 0.000 secs).
+    S: 6 OK done fetching
+    C: 7 IDLE
+    """)
+
+    receive do
+      {:email, _client, msg} ->
+        assert msg == %{
+                 bcc: [],
+                 body: [
+                   {"text/plain", "_Wow!!_\r\n\r\nThis *email* has rich text!\r\n\r\n"},
+                   {"text/html",
+                    "<div id=\"geary-body\" dir=\"auto\"><u><font size=\"1\">Wow!!</font></u><div><br></div><div>This <b>email</b>&nbsp;has <font face=\"monospace\" color=\"#f5c211\">rich text</font><font face=\"sans\">!</font></div></div>"}
+                 ],
+                 cc: [],
+                 date: ~U[2022-12-08 04:59:48Z],
+                 flags: [],
+                 in_reply_to: nil,
+                 message_id: "<><><><><>",
+                 reply_to: ["foo@bar.com"],
+                 sender: ["person@domain.com"],
+                 subject: "An HTML email",
+                 to: ["bar@foo.com"]
+               }
     end
   end
 end

@@ -15,27 +15,23 @@ defmodule Yugo do
   @type mime_type :: String.t()
 
   @typedoc """
-  A body consists of a list of "parts".
-  Each part has a mime type (e.g. `"text/html"`) and associated data stored as a string/binary.
+  A body can be either "onepart" or "multipart".
 
-  Note that an email can contain multiple *bodies*, which can each contain multiple *parts*.
+  A "onepart" body is a tuple in the form `{mime_type, content}`, where `mime_type` is a [`mime_type`](`t:mime_type/0`),
+  and `content` is a [`binary`](`t:binary/0`).
+
+  A "multipart" body consists of a list of "parts". Each part is itself another [`body`](`t:body/0`).
   """
-  @type body :: [{mime_type, binary}]
+  @type body :: {mime_type, binary} | [body]
 
   @type flag :: :seen | :answered | :flagged | :draft | :deleted
 
   @typedoc """
   An email message sent to a subscribed process.
-
-  ## A note on "bodies"
-
-  A single email can have multiple [bodies](`t:Yugo.body/0`). A common example is an email with an attachment:
-  The "text" of the email would be contained in one body, and the attached file would be in the second body.
-  A body can itself have multiple *parts*.
   """
   @type email :: %{
           bcc: [address],
-          bodies: [body],
+          body: body,
           cc: [address],
           date: DateTime.t(),
           flags: [flag],

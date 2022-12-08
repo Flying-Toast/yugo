@@ -412,15 +412,9 @@ defmodule Yugo.Client do
         end
 
       msg.fetched == :pre_body ->
-        body_parts = Enum.flat_map(msg.body_structure, &body_part_paths(&1, []))
-
         body_parts =
-          if body_parts == [""] do
-            ["BODY.PEEK[1]"]
-          else
-            body_parts
-            |> Enum.map(&"BODY.PEEK[#{&1}]")
-          end
+          body_part_paths(msg.body_structure)
+          |> Enum.map(&"BODY.PEEK[#{&1}]")
 
         conn
         |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
@@ -433,17 +427,25 @@ defmodule Yugo.Client do
     end
   end
 
-  defp body_part_paths(body_structure, acc) when is_map(body_structure) do
-    acc
-    |> Enum.reverse()
-    |> Enum.join(".")
-    |> List.wrap()
-  end
+  defp body_part_paths(body_structure, path_acc \\ []) do
+    case body_structure do
+      {:onepart, body} ->
+        path =
+          if path_acc == [] do
+            "1"
+          else
+            path_acc
+            |> Enum.reverse()
+            |> Enum.join(".")
+          end
 
-  defp body_part_paths(body_structure, acc) when is_list(body_structure) do
-    body_structure
-    |> Enum.with_index(1)
-    |> Enum.flat_map(fn {bs, idx} -> body_part_paths(bs, [idx | acc]) end)
+        [path]
+
+      {:multipart, bodies} ->
+        bodies
+        |> Enum.with_index(1)
+        |> Enum.flat_map(fn {b, idx} -> body_part_paths(b, [idx | path_acc]) end)
+    end
   end
 
   # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
@@ -461,46 +463,34 @@ defmodule Yugo.Client do
 
   # Preprocesses/cleans the message before it is sent to a subscriber
   defp package_message(msg) do
+    body = normalize_structure(msg.body, msg.body_structure)
+
     msg
     |> Map.merge(msg.envelope)
-    |> put_in(
-      [:bodies],
-      zip_body_with_structure(msg.bodies, msg.body_structure)
-    )
     # From is too easily spoofed, drop it so users use :sender instead
     |> Map.drop([:from, :fetched, :body_structure, :envelope])
+    |> Map.put(:body, body)
   end
 
-  defp zip_body_with_structure(msg_bodies, msg_body_structure) do
-    {msg_bodies, wrap_outer} =
-      if is_map(msg_bodies) and Map.keys(msg_bodies) == [1] do
-        {msg_bodies[1], true}
-      else
-        {msg_bodies, false}
-      end
-
-    res =
-      msg_body_structure
-      |> Enum.flat_map(&zip_body_with_structure_aux(msg_bodies, &1))
-
-    if wrap_outer do
-      [res]
-    else
-      res
-    end
+  defp normalize_structure(body, {:onepart, map}) do
+    [{[1], content}] = body
+    {map.mime_type, Parser.decode_body(content, map.encoding)}
   end
 
-  defp zip_body_with_structure_aux(body, structure) when is_map(structure) do
-    %{encoding: encoding, mime_type: mime_type} = structure
-
-    [{mime_type, Parser.decode_body(body, encoding)}]
+  defp normalize_structure(bodies, {:multipart, _} = structure) do
+    Enum.map(bodies, fn {path, content} ->
+      {:onepart, struct} = get_structure_at_path(structure, path)
+      {struct, content}
+    end)
+    |> Enum.map(fn {struct, cont} ->
+      {struct.mime_type, Parser.decode_body(cont, struct.encoding)}
+    end)
   end
 
-  defp zip_body_with_structure_aux(bodies, structure) when is_list(structure) do
-    structure
-    |> Enum.with_index(1)
-    |> Enum.map(fn {s, body_num} -> zip_body_with_structure_aux(bodies[body_num], s) end)
-  end
+  defp get_structure_at_path({:multipart, structure}, [idx]), do: Enum.at(structure, idx - 1)
+
+  defp get_structure_at_path({:multipart, structure}, [next | acc]),
+    do: get_structure_at_path(Enum.at(structure, next - 1), acc)
 
   # FETCHes the message attributes needed to apply filters
   defp fetch_message(conn, seqnum) do
@@ -604,25 +594,27 @@ defmodule Yugo.Client do
           conn
         end
 
-      {:fetch, {seq_num, :body, body}} ->
+      {:fetch, {seq_num, :body, one_or_mpart}} ->
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
           conn
-          |> update_in(
+          |> put_in(
             [Access.key!(:unprocessed_messages), seq_num, :body_structure],
-            &((&1 || []) ++ [body])
+            one_or_mpart
           )
         else
           conn
         end
 
       {:fetch, {seq_num, :body_content, {body_number, content}}} ->
-        if Map.has_key?(conn.unprocessed_messages, seq_num) do
-          bodies =
-            conn.unprocessed_messages[seq_num][:bodies]
-            |> put_part_in(body_number, content)
+        msg = Map.get(conn.unprocessed_messages, seq_num)
+
+        if msg do
+          body = msg[:body] || []
 
           conn
-          |> put_in([Access.key!(:unprocessed_messages), seq_num, :bodies], bodies)
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :body], [
+            {body_number, content} | body
+          ])
         else
           conn
         end
