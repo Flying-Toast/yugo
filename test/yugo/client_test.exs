@@ -62,4 +62,53 @@ defmodule Yugo.ClientTest do
                  }
     end
   end
+
+  test "email with a text attachment" do
+    ssl_server()
+    |> assert_comms(~S"""
+    S: * 2 EXISTS
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 34 4)("text" "x-elixir" ("charset" "us-ascii") NIL NIL "base64" 78 1) "mixed") ENVELOPE ("Wed, 07 Dec 2022 23:21:35 -0500" "Foo Bar Baz Buzz Biz Boz" (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) ((NIL NIL "foo" "bar.com")) NIL NIL NIL "Fjaewlk jflkewajf i3ajf0943aF $#AF $#FA#$ F#AF {123}"))
+    S: 5 oK done
+    C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
+    S: * 2 FETCH (BODY[1] {62}
+    Hello!
+
+    See the attached file for an Elixir hello world.
+
+     BODY[2] {78}
+    ZGVmbW9kdWxlIEhlbGxvIGRvCiAgZGVmIGdyZWV0IGRvCiAgICA6d29ybGQKICBlbmQKZW5kCg==
+    )
+    S: 6 ok .
+    """)
+
+    receive do
+      {:email, _client, msg} ->
+        assert msg ==
+                 %{
+                   bcc: [],
+                   bodies: [
+                     [
+                       {"text/plain",
+                        "Hello!\r\n\r\nSee the attached file for an Elixir hello world.\r\n\r\n"}
+                     ],
+                     [
+                       {"text/x-elixir",
+                        "defmodule Hello do\n  def greet do\n    :world\n  end\nend\n"}
+                     ]
+                   ],
+                   cc: [],
+                   date: ~U[2022-12-07 18:21:35Z],
+                   flags: [],
+                   in_reply_to: nil,
+                   message_id: "Fjaewlk jflkewajf i3ajf0943aF $#AF $#FA#$ F#AF {123}",
+                   reply_to: ["bobjones@example.org"],
+                   sender: ["bobjones@example.org"],
+                   subject: "Foo Bar Baz Buzz Biz Boz",
+                   to: ["foo@bar.com"]
+                 }
+    end
+  end
 end
