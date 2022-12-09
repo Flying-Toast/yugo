@@ -21,6 +21,8 @@ defmodule Yugo.Client do
           Supervisor.start_link(children, strategy: :one_for_one)
         end
       end
+
+  See [`start_link`](`Yugo.Client.start_link/1`) for a list of possible arguments.
   """
 
   use GenServer
