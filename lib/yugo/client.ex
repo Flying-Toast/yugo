@@ -489,7 +489,7 @@ defmodule Yugo.Client do
   end
 
   defp get_part_structures({_, content}, {:onepart, map}),
-    do: {map.mime_type, Parser.decode_body(content, map.encoding)}
+    do: {map.mime_type, map.params, Parser.decode_body(content, map.encoding)}
 
   defp get_part_structures({[idx | path], content}, {:multipart, parts}),
     do: get_part_structures({path, content}, Enum.at(parts, idx - 1))

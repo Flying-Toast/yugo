@@ -39,7 +39,9 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   body: {"text/plain", "Hello 123\r\n456"},
+                   body:
+                     {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
+                      "Hello 123\r\n456"},
                    cc: [],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [:seen],
@@ -78,9 +80,9 @@ defmodule Yugo.ClientTest do
                  %{
                    bcc: [],
                    body: [
-                     {"text/plain",
+                     {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
                       "Hello!\r\n\r\nSee the attached file for an Elixir hello world.\r\n\r\n"},
-                     {"text/x-elixir",
+                     {"text/x-elixir", %{"charset" => "us-ascii"},
                       "defmodule Hello do\n  def greet do\n    :world\n  end\nend\n"}
                    ],
                    cc: [],
@@ -103,7 +105,7 @@ defmodule Yugo.ClientTest do
     C: DONE
     S: 4 OK idle done
     C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
-    S: * 2 FETCH (FLAGS () BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
+    S: * 2 FETCH (FLAGS () BODY ("text" "plain" () NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
     S: NIL "fizz" "buzz.com")) NIL "123 abc 456" {0}
     S: ))
     S: 5 oK done
@@ -117,7 +119,7 @@ defmodule Yugo.ClientTest do
         assert msg ==
                  %{
                    bcc: [],
-                   body: {"text/plain", "hello"},
+                   body: {"text/plain", %{}, "hello"},
                    cc: ["foo@bar.com", "bar@foo.com", "fizz@buzz.com"],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [],
@@ -138,7 +140,7 @@ defmodule Yugo.ClientTest do
     C: DONE
     S: 4 ok * * * ok ok ok ok
     C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
-    S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 42 4)("text" "html" ("charset" "us-ascii") NIL NIL "7bit" 206 0) "alternative") ENVELOPE ("Thu, 08 Dec 2022 09:59:48 -0500" "An HTML email" (("Aych T. Emmel" NIL "person" "domain.com")) ((NIL NIL "person" "domain.com")) ((NIL NIL "foo" "bar.com")) ((NIL NIL "bar" "foo.com")) NIL NIL NIL "<><><><><>"))
+    S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii") NIL NIL "7bit" 42 4)("text" "html" ("charset" "us-ascii") NIL NIL "7bit" 206 0) "alternative") ENVELOPE ("Thu, 08 Dec 2022 09:59:48 -0500" "An HTML email" (("Aych T. Emmel" NIL "person" "domain.com")) ((NIL NIL "person" "domain.com")) ((NIL NIL "foo" "bar.com")) ((NIL NIL "bar" "foo.com")) NIL NIL NIL "<><><><><>"))
     S: 5 OK Fetch completed (0.001 + 0.000 secs).
     C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
     S: * 2 FETCH (BODY[1] {42}
@@ -158,8 +160,9 @@ defmodule Yugo.ClientTest do
         assert msg == %{
                  bcc: [],
                  body: [
-                   {"text/plain", "_Wow!!_\r\n\r\nThis *email* has rich text!\r\n\r\n"},
-                   {"text/html",
+                   {"text/plain", %{"charset" => "us-ascii"},
+                    "_Wow!!_\r\n\r\nThis *email* has rich text!\r\n\r\n"},
+                   {"text/html", %{"charset" => "us-ascii"},
                     "<div id=\"geary-body\" dir=\"auto\"><u><font size=\"1\">Wow!!</font></u><div><br></div><div>This <b>email</b>&nbsp;has <font face=\"monospace\" color=\"#f5c211\">rich text</font><font face=\"sans\">!</font></div></div>"}
                  ],
                  cc: [],
@@ -202,18 +205,18 @@ defmodule Yugo.ClientTest do
                    bcc: [],
                    body: [
                      [
-                       {"x-foo/x-bar", "this is 1.1"},
-                       {"x-foo/x-bar", "this is 1.2"},
+                       {"x-foo/x-bar", %{}, "this is 1.1"},
+                       {"x-foo/x-bar", %{}, "this is 1.2"},
                        [
-                         {"x-foo/x-bar", "this is 1.3.1"},
-                         {"x-foo/x-bar", "this is 1.3.2"}
+                         {"x-foo/x-bar", %{}, "this is 1.3.1"},
+                         {"x-foo/x-bar", %{}, "this is 1.3.2"}
                        ]
                      ],
                      [
-                       {"x-foo/x-bar", "this is 2.1"},
-                       {"x-foo/x-bar", "this is 2.2"}
+                       {"x-foo/x-bar", %{}, "this is 2.1"},
+                       {"x-foo/x-bar", %{}, "this is 2.2"}
                      ],
-                     {"x-foo/x-bar", "this is 3"}
+                     {"x-foo/x-bar", %{}, "this is 3"}
                    ],
                    cc: [],
                    date: ~U[2022-12-07 13:02:41Z],
