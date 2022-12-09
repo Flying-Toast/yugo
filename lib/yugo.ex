@@ -20,9 +20,9 @@ defmodule Yugo do
   A "onepart" body is a tuple in the form `{mime_type, params, content}`, where `mime_type` is a [`mime_type`](`t:mime_type/0`),
   `params` is a string->string map, and `content` is a [`binary`](`t:binary/0`).
 
-  A "multipart" body consists of a list of "parts". Each part is itself another [`body`](`t:body/0`).
+  A "multipart" body consists of a *list* of [`body`s](`t:body/0`).
   """
-  @type body :: {mime_type, %{String.t() => String.t()}, binary} | [body]
+  @type body :: {mime_type, %{optional(String.t()) => String.t()}, binary} | [body]
 
   @type flag :: :seen | :answered | :flagged | :draft | :deleted
 
