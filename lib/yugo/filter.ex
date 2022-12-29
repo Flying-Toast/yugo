@@ -145,7 +145,7 @@ defmodule Yugo.Filter do
 
       # make a filter that only accepts emails sent from "peter@example.com" or "alex@example.com"
       Filter.all()
-      |> Filter.sender_matches(~r/(peter|alex)@example.com/i)
+      |> Filter.sender_matches(~r/^(peter|alex)@example.com$/i)
   """
   @spec sender_matches(__MODULE__.t(), Regex.t()) :: __MODULE__.t()
   def sender_matches(%__MODULE__{} = filter, pattern) when is_struct(pattern, Regex) do
