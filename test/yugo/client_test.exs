@@ -190,7 +190,7 @@ defmodule Yugo.ClientTest do
     C: DONE
     S: 4 ok * * * ok ok ok ok
     C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
-    S: * 2 FETCH (FLAGS () BODY #{body_structure} ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL nil niL))
+    S: * 2 FETCH (uid 123 FLAGS () BODY #{body_structure} ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL nil niL))
     S: 5 OK OK OK
     C: 6 FETCH 2 (BODY.PEEK[1.1] BODY.PEEK[1.2] BODY.PEEK[1.3.1] BODY.PEEK[1.3.2] BODY.PEEK[2.1] BODY.PEEK[2.2] BODY.PEEK[3])
     S: * 2 fetch (BODY[1.1] "this is 1.1" BODY[1.2] "this is 1.2" BODY[1.3.1] "this is 1.3.1" body[1.3.2] "this is 1.3.2" body[2.1] "this is 2.1" body[2.2] "this is 2.2" body[3] "this is 3")

@@ -628,6 +628,9 @@ defmodule Yugo.Client do
         else
           conn
         end
+
+      {:fetch, {_seq_num, :uid, _uid}} ->
+        conn
     end
   end
 

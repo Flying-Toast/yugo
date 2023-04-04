@@ -225,6 +225,10 @@ defmodule Yugo.Parser do
       name == "BODY" ->
         parse_body(rest)
 
+      name == "UID" ->
+        {uid, rest} = parse_number(rest)
+        {{:uid, uid}, rest}
+
       Regex.match?(~r/BODY\[/, name) ->
         [body_number] = Regex.run(~r/BODY\[([0-9.]+)\]/, name, capture: :all_but_first)
 
