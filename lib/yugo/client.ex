@@ -80,8 +80,7 @@ defmodule Yugo.Client do
           port: 1..65535,
           tls: boolean,
           ssl_verify: :verify_none | :verify_peer,
-          mailbox: String.t(),
-          server: String.t()
+          mailbox: String.t()
         ) :: GenServer.on_start()
   def start_link(args) do
     for required <- [:server, :username, :password, :name] do
