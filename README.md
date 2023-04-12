@@ -40,3 +40,8 @@ receive do
     IO.inspect(message)
 end
 ```
+
+## Important
+
+Yugo may not notify about new messages if you have configured sorting rules (redirect, move to folder, etc.) or if you
+subscribe to `Spam` folder. It depends on email provider. 
