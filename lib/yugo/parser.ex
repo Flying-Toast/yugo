@@ -39,8 +39,8 @@ defmodule Yugo.Parser do
   Parses a response from the server into a list of "actions".
 
   "Actions" are terms that specify a change to the client state that happens
-  in response to a certain server event. For example, parsing this "CAPABILITY" response
-  generates a `:capabilities` action:
+  in response to a certain server event. For example, parsing this "FLAGS" response
+  generates an `:applicable_flags` action:
 
       iex(2)> Yugo.Parser.parse_response ~S|* FLAGS (\Answered \Flagged \Deleted \Seen \Draft)|
       [applicable_flags: ["\\ANSWERED", "\\FLAGGED", "\\DELETED", "\\SEEN", "\\DRAFT"]]
