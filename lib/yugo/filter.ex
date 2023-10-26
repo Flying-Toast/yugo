@@ -48,7 +48,7 @@ defmodule Yugo.Filter do
         (message.envelope.subject != nil &&
            Regex.match?(filter.subject_regex, message.envelope.subject)),
       !filter.sender_regex ||
-        Enum.any?(message.envelope.sender, &Regex.match?(filter.sender_regex, &1)),
+        Enum.any?(message.envelope.sender, &Regex.match?(filter.sender_regex, elem(&1, 1))),
       filter.has_flags == [] || Enum.all?(filter.has_flags, &Enum.member?(message.flags, &1)),
       filter.lacks_flags == [] ||
         Enum.all?(filter.lacks_flags, &(!Enum.member?(message.flags, &1)))

@@ -72,8 +72,15 @@ defmodule Yugo.FilterTest do
       |> Filter.sender_matches(~r/bob/)
 
     assert not Filter.accepts?(f, %{envelope: %{sender: []}})
-    assert not Filter.accepts?(f, %{envelope: %{sender: ["foo@bar.com", "baz@biz.com"]}})
-    assert Filter.accepts?(f, %{envelope: %{sender: ["foo@bar.com", "bob@example.com"]}})
-    assert Filter.accepts?(f, %{envelope: %{sender: ["zzz@foo.bob"]}})
+
+    assert not Filter.accepts?(f, %{
+             envelope: %{sender: [{nil, "foo@bar.com"}, {"bizbaz", "baz@biz.com"}]}
+           })
+
+    assert Filter.accepts?(f, %{
+             envelope: %{sender: [{nil, "foo@bar.com"}, {nil, "bob@example.com"}]}
+           })
+
+    assert Filter.accepts?(f, %{envelope: %{sender: [{nil, "zzz@foo.bob"}]}})
   end
 end

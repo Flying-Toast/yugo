@@ -5,7 +5,12 @@ defmodule Yugo do
 
   alias Yugo.{Filter, Client}
 
-  @type address :: String.t()
+  @typedoc """
+  The first field is the name associated with the address, and the second field is the address itself.
+
+  e.g. `{"Bart", "bart@simpsons.family"}`
+  """
+  @type address :: {nil | String.t(), String.t()}
 
   @typedoc """
   e.g. `"text/html"`, `"image/png"`, `"text/plain"`, etc.
@@ -20,7 +25,7 @@ defmodule Yugo do
   A "onepart" body is a tuple in the form `{mime_type, params, content}`, where `mime_type` is a [`mime_type`](`t:mime_type/0`),
   `params` is a string->string map, and `content` is a [`binary`](`t:binary/0`).
 
-  A "multipart" body consists of a *list* of [`body`s](`t:body/0`).
+  A "multipart" body consists of a *list* of [`body`s](`t:body/0`), which can themselves be either onepart or multipart.
   """
   @type body :: {mime_type, %{optional(String.t()) => String.t()}, binary} | [body]
 
@@ -28,6 +33,12 @@ defmodule Yugo do
 
   @typedoc """
   An email message sent to a subscribed process.
+
+  # Difference between `sender` and `from`
+  Both "sender" and "from" are fields used by IMAP to indicate the origin of the email.
+  They are *usually* the same, but they can be different and they have different meanings:
+  - `from` - the author who physically wrote the email. `From` is typically the address you see when viewing the message in an email client.
+  - `sender` - the person who sent the email, potentially different than `from` if someone else sent the email on behalf of the author.
   """
   @type email :: %{
           bcc: [address],
@@ -39,6 +50,7 @@ defmodule Yugo do
           message_id: nil | String.t(),
           reply_to: [address],
           sender: [address],
+          from: [address],
           subject: nil | String.t(),
           to: [address]
         }

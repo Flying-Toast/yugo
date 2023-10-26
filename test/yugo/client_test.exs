@@ -47,10 +47,11 @@ defmodule Yugo.ClientTest do
                    flags: [:seen],
                    in_reply_to: nil,
                    message_id: "fjaelwkjfi oaf<$ ))) \"",
-                   reply_to: ["marge@simpsons-family.com"],
-                   sender: ["marge@simpsons-family.com"],
+                   reply_to: [{"Marge", "marge@simpsons-family.com"}],
+                   sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
-                   to: ["homer@simpsons-family.com"]
+                   to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
                  }
     end
   end
@@ -90,10 +91,11 @@ defmodule Yugo.ClientTest do
                    flags: [],
                    in_reply_to: nil,
                    message_id: "Fjaewlk jflkewajf i3ajf0943aF $#AF $#FA#$ F#AF {123}",
-                   reply_to: ["bobjones@example.org"],
-                   sender: ["bobjones@example.org"],
+                   reply_to: [{"Bob Jones", "bobjones@example.org"}],
+                   sender: [{"Bob Jones", "bobjones@example.org"}],
                    subject: "Foo Bar Baz Buzz Biz Boz",
-                   to: ["foo@bar.com"]
+                   to: [{nil, "foo@bar.com"}],
+                   from: [{"Bob Jones", "bobjones@example.org"}]
                  }
     end
   end
@@ -120,15 +122,19 @@ defmodule Yugo.ClientTest do
                  %{
                    bcc: [],
                    body: {"text/plain", %{}, "hello"},
-                   cc: ["foo@bar.com", "bar@foo.com", "fizz@buzz.com"],
+                   cc: [{nil, "foo@bar.com"}, {"barfoo", "bar@foo.com"}, {"", "fizz@buzz.com"}],
                    date: ~U[2022-12-07 13:02:41Z],
                    flags: [],
                    in_reply_to: "123 abc 456",
                    message_id: "",
-                   reply_to: ["marge@simpsons-family.com"],
-                   sender: ["marge@simpsons-family.com", "bob@bobs-email.com"],
+                   reply_to: [{"Marge", "marge@simpsons-family.com"}],
+                   sender: [
+                     {"Marge Simpson", "marge@simpsons-family.com"},
+                     {nil, "bob@bobs-email.com"}
+                   ],
                    subject: "Hello! (subject)",
-                   to: ["homer@simpsons-family.com"]
+                   to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
                  }
     end
   end
@@ -170,10 +176,11 @@ defmodule Yugo.ClientTest do
                  flags: [],
                  in_reply_to: nil,
                  message_id: "<><><><><>",
-                 reply_to: ["foo@bar.com"],
-                 sender: ["person@domain.com"],
+                 reply_to: [{nil, "foo@bar.com"}],
+                 sender: [{nil, "person@domain.com"}],
                  subject: "An HTML email",
-                 to: ["bar@foo.com"]
+                 to: [{nil, "bar@foo.com"}],
+                 from: [{"Aych T. Emmel", "person@domain.com"}]
                }
     end
   end
@@ -223,10 +230,11 @@ defmodule Yugo.ClientTest do
                    flags: [],
                    in_reply_to: nil,
                    message_id: nil,
-                   reply_to: ["marge@simpsons-family.com"],
-                   sender: ["marge@simpsons-family.com"],
+                   reply_to: [{"Marge", "marge@simpsons-family.com"}],
+                   sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
-                   to: ["homer@simpsons-family.com"]
+                   to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
                  }
     end
   end
