@@ -391,7 +391,7 @@ defmodule Yugo.Client do
       not Map.has_key?(msg, :fetched) ->
         conn
         |> fetch_message(seqnum)
-        |> process_earliest_message()
+        |> maybe_process_messages()
 
       msg.fetched == :filter ->
         parts_to_fetch =
