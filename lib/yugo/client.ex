@@ -399,6 +399,7 @@ defmodule Yugo.Client do
           |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
           |> Enum.map(&elem(&1, 1))
 
+        parts_to_fetch = ["RFC822.HEADER" | parts_to_fetch]
         parts_to_fetch = ["BODY" | parts_to_fetch]
 
         conn =
@@ -585,6 +586,14 @@ defmodule Yugo.Client do
 
           conn
           |> put_in([Access.key!(:unprocessed_messages), seq_num, :flags], flags)
+        else
+          conn
+        end
+
+      {:fetch, {seq_num, :rfc822_header, rfc822_header}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :rfc822_header], rfc822_header)
         else
           conn
         end
