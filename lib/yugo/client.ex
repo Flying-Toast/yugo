@@ -399,8 +399,7 @@ defmodule Yugo.Client do
           |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
           |> Enum.map(&elem(&1, 1))
 
-        parts_to_fetch = ["RFC822.HEADER" | parts_to_fetch]
-        parts_to_fetch = ["BODY" | parts_to_fetch]
+        parts_to_fetch = ["BODY" , "RFC822.HEADER" | parts_to_fetch]
 
         conn =
           conn
