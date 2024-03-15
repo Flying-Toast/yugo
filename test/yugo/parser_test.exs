@@ -82,4 +82,35 @@ defmodule Yugo.ParserTest do
     [fetch: {0, :flags, ["\\Seen", "\\Recent"]}, fetch: {0, :uid, 84}] =
       Parser.parse_response(~S|* 0 fetch (UID 84 FLags (\Seen \Recent))|)
   end
+
+  test "parse FETCH response with simple RFC822.HEADER" do
+    [
+      fetch: {1, :rfc822_header, "From: example@example.com\r\nSubject: Test Email\r\n\r\n"}
+    ] =
+      Parser.parse_response(
+        "* 1 FETCH (RFC822.HEADER \"From: example@example.com\r\nSubject: Test Email\r\n\r\n\")"
+      )
+
+  end
+
+  test "parse FETCH response with complex RFC822.HEADER" do
+    headers1 = "From: example@example.com\r\n" <>
+              "X-Spam-Checker-Version: SpamAssassin 3.4.6 (2021-04-09)\r\n" <>
+              "X-Spam-Level:\r\n" <>
+              "X-Spam-Pyzor:\r\n" <>
+              "X-Spam-Status: No, score=-100.0 required=6.0 shortcircuit=ham
+	autolearn=disabled version=3.4.6\r\n" <>
+              "Subject: Multi-Line Subject\r\n\t Continued Here\r\n" <>
+              "To: recipient1@example.com,\r\n recipient2@example.com\r\n" <>
+              "CC: cc@example.com\r\nBCC: bcc@example.com\r\n\r\n"
+    [
+      fetch: {2, :rfc822_header, headers2}
+    ] =
+      Parser.parse_response(
+        "* 2 FETCH (RFC822.HEADER \"#{headers1}\")"
+      )
+
+    assert headers1 == headers2
+
+  end
 end

@@ -225,6 +225,10 @@ defmodule Yugo.Parser do
       name == "BODY" ->
         parse_body(rest)
 
+      name == "RFC822.HEADER" ->
+        {headers, rest} = parse_string(rest)
+        {{:rfc822_header, headers}, rest}
+
       name == "UID" ->
         {uid, rest} = parse_number(rest)
         {{:uid, uid}, rest}

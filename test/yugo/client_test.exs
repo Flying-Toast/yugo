@@ -24,7 +24,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY RFC822.HEADER FLAGS ENVELOPE)
     S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1])
@@ -62,7 +62,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY RFC822.HEADER FLAGS ENVELOPE)
     S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 34 4)("text" "x-elixir" ("charset" "us-ascii") NIL NIL "base64" 78 1) "mixed") ENVELOPE ("Wed, 07 Dec 2022 23:21:35 -0500" "Foo Bar Baz Buzz Biz Boz" (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) ((NIL NIL "foo" "bar.com")) NIL NIL NIL "Fjaewlk jflkewajf i3ajf0943aF $#AF $#FA#$ F#AF {123}"))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
@@ -106,7 +106,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY RFC822.HEADER FLAGS ENVELOPE)
     S: * 2 FETCH (FLAGS () BODY ("text" "plain" () NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
     S: NIL "fizz" "buzz.com")) NIL "123 abc 456" {0}
     S: ))
@@ -145,7 +145,7 @@ defmodule Yugo.ClientTest do
     S: * 2 exists
     C: DONE
     S: 4 ok * * * ok ok ok ok
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY RFC822.HEADER FLAGS ENVELOPE)
     S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii") NIL NIL "7bit" 42 4)("text" "html" ("charset" "us-ascii") NIL NIL "7bit" 206 0) "alternative") ENVELOPE ("Thu, 08 Dec 2022 09:59:48 -0500" "An HTML email" (("Aych T. Emmel" NIL "person" "domain.com")) ((NIL NIL "person" "domain.com")) ((NIL NIL "foo" "bar.com")) ((NIL NIL "bar" "foo.com")) NIL NIL NIL "<><><><><>"))
     S: 5 OK Fetch completed (0.001 + 0.000 secs).
     C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
@@ -196,7 +196,7 @@ defmodule Yugo.ClientTest do
     S: * 2 exists
     C: DONE
     S: 4 ok * * * ok ok ok ok
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY RFC822.HEADER FLAGS ENVELOPE)
     S: * 2 FETCH (uid 123 FLAGS () BODY #{body_structure} ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL nil niL))
     S: 5 OK OK OK
     C: 6 FETCH 2 (BODY.PEEK[1.1] BODY.PEEK[1.2] BODY.PEEK[1.3.1] BODY.PEEK[1.3.2] BODY.PEEK[2.1] BODY.PEEK[2.2] BODY.PEEK[3])
