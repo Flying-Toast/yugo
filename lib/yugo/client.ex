@@ -589,10 +589,10 @@ defmodule Yugo.Client do
           conn
         end
 
-      {:fetch, {seq_num, :rfc822_header, rfc822_header}} ->
+      {:fetch, {seq_num, :headers, headers}} ->
         if Map.has_key?(conn.unprocessed_messages, seq_num) do
           conn
-          |> put_in([Access.key!(:unprocessed_messages), seq_num, :rfc822_header], rfc822_header)
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :headers], headers)
         else
           conn
         end

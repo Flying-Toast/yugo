@@ -226,8 +226,13 @@ defmodule Yugo.Parser do
         parse_body(rest)
 
       name == "RFC822.HEADER" ->
-        {headers, rest} = parse_string(rest)
-        {{:rfc822_header, headers}, rest}
+        {raw_headers, rest} = parse_string(rest)
+
+        {{:headers,
+          raw_headers
+            |> String.split("\r\n", trim: true)
+            |> Enum.map(&String.split(&1, ":", trim: true))
+        }, rest}
 
       name == "UID" ->
         {uid, rest} = parse_number(rest)
