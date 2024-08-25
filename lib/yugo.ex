@@ -81,4 +81,22 @@ defmodule Yugo do
   def unsubscribe(client_name) do
     GenServer.cast({:via, Registry, {Yugo.Registry, client_name}}, {:unsubscribe, self()})
   end
+
+  @spec list(Client.name(), reference :: String.t(), mailbox :: String.t()) :: [
+          {:name, String.t()} | {:delimiter, String.t()} | {:attributes, [String.t()]}
+        ]
+  def list(client_name, reference \\ "", mailbox \\ "%") do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:list, reference, mailbox})
+  end
+
+  @spec capabilities(Client.name()) :: [String.t()]
+  def capabilities(client_name) do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:capabilities})
+  end
+
+  @spec has_capability?(Client.name(), String.t()) :: Bool.t()
+  def has_capability?(client_name, capability) do
+    capabilities(client_name)
+    |> Enum.any?(fn cap -> cap == capability end)
+  end
 end

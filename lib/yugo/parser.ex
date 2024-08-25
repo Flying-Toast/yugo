@@ -165,9 +165,27 @@ defmodule Yugo.Parser do
         parse_msg_atts(fetchdata)
         |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
 
+      Regex.match?(~r/^LIST /i, resp) ->
+        [flags, delimiter, name] = parse_list_response(resp)
+        [list: %{flags: flags, delimiter: delimiter, name: name}]
+
       true ->
         []
     end
+  end
+
+  defp parse_list_response(resp) do
+    [_, flags, delimiter, name] = Regex.run(~r/^LIST \((.*?)\) (.*?) (.*)$/i, resp)
+
+    flags =
+      flags
+      |> String.split(" ")
+      |> Enum.map(&String.to_atom/1)
+
+    delimiter = if delimiter == "NIL", do: nil, else: String.trim(delimiter, "\"")
+    name = String.trim(name, "\"")
+
+    [flags, delimiter, name]
   end
 
   defp parse_msg_atts(rest), do: parse_msg_atts_aux(rest, [])
