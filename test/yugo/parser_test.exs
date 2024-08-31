@@ -113,4 +113,15 @@ defmodule Yugo.ParserTest do
     assert Enum.at(destination_uids, 0) == 2001
     assert Enum.at(destination_uids, -1) == 3000
   end
+
+  test "parse LIST response" do
+    [list: %{flags: [:Noselect], delimiter: "/", name: "Public Folders"}] =
+      Parser.parse_response("* LIST (\Noselect) \"/\" \"Public Folders\"\r\n")
+
+    [list: %{flags: [:Unmarked, :HasNoChildren], delimiter: "/", name: "INBOX"}] =
+      Parser.parse_response("* LIST (\Unmarked \HasNoChildren) \"/\" \"INBOX\"\r\n")
+
+    [list: %{flags: [:Unmarked, :HasNoChildren], delimiter: "/", name: "Drafts"}] =
+      Parser.parse_response("* LIST (\Unmarked \HasNoChildren) \"/\" \"Drafts\"\r\n")
+  end
 end
