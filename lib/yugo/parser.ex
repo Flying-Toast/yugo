@@ -165,6 +165,18 @@ defmodule Yugo.Parser do
         parse_msg_atts(fetchdata)
         |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
 
+      Regex.match?(~r/^COPYUID /i, resp) ->
+        [validity, source_uids, destination_uids] =
+          Regex.run(~r/^COPYUID (\d+) (\S+) (\S+)$/i, resp, capture: :all_but_first)
+
+        [
+          copyuid: %{
+            validity: String.to_integer(validity),
+            source_uids: parse_uid_set(source_uids),
+            destination_uids: parse_uid_set(destination_uids)
+          }
+        ]
+
       Regex.match?(~r/^LIST /i, resp) ->
         [flags, delimiter, name] = parse_list_response(resp)
         [list: %{flags: flags, delimiter: delimiter, name: name}]
@@ -452,5 +464,26 @@ defmodule Yugo.Parser do
     }
 
     {{:body, {:onepart, body}}, rest}
+  end
+
+  def parse_move_uids(response) do
+    case Regex.run(~r/\[COPYUID \d+ (\S+) (\S+)\]/i, response) do
+      [_, source_uids, destination_uids] ->
+        {:ok, {parse_uid_set(source_uids), parse_uid_set(destination_uids)}}
+
+      nil ->
+        :ok
+    end
+  end
+
+  def parse_uid_set(uid_set) do
+    uid_set
+    |> String.split(",")
+    |> Enum.flat_map(fn range ->
+      case String.split(range, ":") do
+        [single] -> [String.to_integer(single)]
+        [start, stop] -> Enum.to_list(String.to_integer(start)..String.to_integer(stop))
+      end
+    end)
   end
 end

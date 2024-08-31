@@ -52,7 +52,8 @@ defmodule Yugo do
           sender: [address],
           from: [address],
           subject: nil | String.t(),
-          to: [address]
+          to: [address],
+          seqnum: integer()
         }
 
   @doc """
@@ -82,6 +83,28 @@ defmodule Yugo do
     GenServer.cast({:via, Registry, {Yugo.Registry, client_name}}, {:unsubscribe, self()})
   end
 
+  @doc """
+  Lists mailboxes matching the given reference and mailbox pattern.
+
+  This function sends a LIST command to the IMAP server and returns the names of
+  the mailboxes that match the given reference and mailbox pattern.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `reference` - The reference name, typically an empty string. Defaults to "".
+    * `mailbox` - The mailbox name with possible wildcards. Defaults to "%", which matches all mailboxes.
+
+  ## Returns
+
+  A list of mailbox names.
+
+  ## Example
+
+      iex> Yugo.list(:my_client)
+      ["INBOX", "Sent", "Drafts"]
+
+  """
   @spec list(Client.name(), reference :: String.t(), mailbox :: String.t()) :: [
           {:name, String.t()} | {:delimiter, String.t()} | {:attributes, [String.t()]}
         ]
@@ -89,14 +112,96 @@ defmodule Yugo do
     GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:list, reference, mailbox})
   end
 
+  @doc """
+  Retrieves the capabilities of the IMAP server.
+
+  This function sends a CAPABILITY command to the IMAP server and returns a list
+  of capabilities supported by the server.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+
+  ## Returns
+
+  A list of capability strings.
+
+  ## Example
+
+      iex> Yugo.capabilities(:my_client)
+      ["IMAP4rev1", "STARTTLS", "AUTH=PLAIN", "LOGINDISABLED"]
+
+  """
   @spec capabilities(Client.name()) :: [String.t()]
   def capabilities(client_name) do
     GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:capabilities})
   end
 
-  @spec has_capability?(Client.name(), String.t()) :: Bool.t()
+  @doc """
+  Checks if the IMAP server supports a specific capability.
+
+  This function uses the `capabilities/1` function to retrieve the server's capabilities
+  and checks if the specified capability is present in the list.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `capability` - The capability string to check for.
+
+  ## Returns
+
+  A boolean indicating whether the server supports the specified capability.
+
+  ## Example
+
+      iex> Yugo.has_capability?(:my_client, "IMAP4rev1")
+      true
+
+  """
+  @spec has_capability?(Client.name(), String.t()) :: boolean()
   def has_capability?(client_name, capability) do
     capabilities(client_name)
     |> Enum.any?(fn cap -> cap == capability end)
+  end
+
+  @doc """
+  Moves messages from the current mailbox to another mailbox.
+
+  This function sends a MOVE command to the IMAP server to move messages from the current
+  mailbox to the specified destination mailbox.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `sequence_set` - A string representing the sequence set of messages to move.
+    * `destination` - The name of the destination mailbox.
+    * `return_uids` - (Optional) A boolean indicating whether to return the UIDs of the moved messages. Defaults to `false`.
+
+  ## Returns
+
+    * `:ok` if `return_uids` is `false`.
+    * `{:ok, {[source_uids], [destination_uids]}}` if `return_uids` is `true`, where `source_uids` are the UIDs of the messages in the source mailbox, and `destination_uids` are the corresponding UIDs in the destination mailbox.
+    * `{:error, reason}` if the operation fails.
+
+  ## Example
+
+      iex> Yugo.move(:my_client, "1:3", "Archive")
+      :ok
+
+      iex> Yugo.move(:my_client, "1:3", "Archive", true)
+      {:ok, {[1, 2, 3], [101, 102, 103]}}
+
+  """
+  @spec move(
+          Client.name(),
+          sequence_set :: String.t(),
+          destination :: String.t(),
+          return_uids :: boolean()
+        ) :: :ok | {:ok, {[integer()], [integer()]}} | {:error, String.t()}
+  def move(client_name, sequence_set, destination, return_uids \\ false) do
+    GenServer.call(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:move, sequence_set, destination, return_uids}
+    )
   end
 end

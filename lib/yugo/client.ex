@@ -142,6 +142,52 @@ defmodule Yugo.Client do
   end
 
   @impl true
+  def handle_call({:capabilities}, _from, conn) do
+    {:reply, conn.capabilities, conn}
+  end
+
+  @impl true
+  def handle_call({:move, sequence_set, destination, return_uids}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_move_command(sequence_set, destination, return_uids, from)
+
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_call({:list, reference, mailbox}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_command(
+        "LIST #{quote_string(reference)} #{quote_string(mailbox)}",
+        &on_list_response(&1, &2, &3, from)
+      )
+
+    {:noreply, conn}
+  end
+
+  defp on_list_response(conn, :ok, response, from) do
+    mailbox_names = Enum.map(response, fn %{name: name} -> name end)
+    GenServer.reply(from, {:ok, mailbox_names})
+    maybe_idle(conn)
+  end
+
+  defp send_move_command(conn, sequence_set, destination, return_uids, from) do
+    cmd = "MOVE #{sequence_set} #{quote_string(destination)}"
+    send_command(conn, cmd, &on_move_response(&1, &2, &3, return_uids, from))
+  end
+
+  defp on_move_response(conn, :ok, _response, _return_uids, from) do
+    # TODO: currently not collecting the uids of the moved messages
+    # result = if return_uids, do: Parser.parse_move_uids(response), else: :ok
+    GenServer.reply(from, :ok)
+    maybe_idle(conn)
+  end
+
+  @impl true
   def handle_continue(args, _state) do
     {:ok, socket} =
       if args[:tls] do
@@ -456,7 +502,7 @@ defmodule Yugo.Client do
 
     for {filter, pid} <- conn.filters do
       if Filter.accepts?(filter, msg) do
-        send(pid, {:email, conn.my_name, package_message(msg)})
+        send(pid, {:email, conn.my_name, package_message(msg, seqnum)})
       end
     end
 
@@ -464,11 +510,12 @@ defmodule Yugo.Client do
   end
 
   # Preprocesses/cleans the message before it is sent to a subscriber
-  defp package_message(msg) do
+  defp package_message(msg, seqnum) do
     msg
     |> Map.merge(msg.envelope)
     |> Map.drop([:fetched, :body_structure, :envelope])
     |> Map.put(:body, normalize_structure(msg.body, msg.body_structure))
+    |> Map.put(:seqnum, seqnum)
   end
 
   defp normalize_structure(msg_body, msg_structure) do
@@ -646,6 +693,11 @@ defmodule Yugo.Client do
       {:list, %{flags: flags, delimiter: delimiter, name: name}} ->
         list_item = %{flags: flags, delimiter: delimiter, name: name}
         %{conn | list_response_acc: [list_item | conn.list_response_acc]}
+
+      {:copyuid,
+       %{validity: _validity, source_uids: _source_uids, destination_uids: _destination_uids}} ->
+        # might need to save these both off for return to the user, just getting MOVE working first
+        conn
     end
   end
 
