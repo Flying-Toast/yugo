@@ -243,4 +243,72 @@ defmodule Yugo.ClientTest do
                  }
     end
   end
+
+  test "list mailboxes" do
+    socket = ssl_server(:test_list)
+
+    # Start the list operation
+    task = Task.async(fn -> Yugo.list(:test_list, "", "%") end)
+
+    # Simulate LIST command and response
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 LIST "" "%"
+    S: * LIST (\Noselect) "/" "Public Folders"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "INBOX"
+    S: * LIST (\Unmarked \HasChildren) "/" "Sent Items"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "Drafts"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "Trash"
+    S: 5 OK LIST completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) ==
+             {:ok,
+              [
+                "Public Folders",
+                "INBOX",
+                "Sent Items",
+                "Drafts",
+                "Trash"
+              ]}
+  end
+
+  # TODO: pending uid message returns
+  # test "move messages" do
+  #   socket = ssl_server(:test_move)
+
+  #   # Start the move operation
+  #   task = Task.async(fn -> Yugo.move(:test_move, "1:3", "Archive", true) end)
+
+  #   # Simulate MOVE command and response
+  #   assert_comms(socket, ~S"""
+  #   C: DONE
+  #   C: 5 MOVE 1:3 "Archive"
+  #   S: * OK [COPYUID 1234 1,2,3 101,102,103] Moved
+  #   S: 5 OK MOVE completed
+  #   """)
+
+  #   # Wait for the result and assert
+  #   assert Task.await(task) == {:ok, {[1, 2, 3], [101, 102, 103]}}
+  # end
+
+  test "move messages without returning UIDs" do
+    socket = ssl_server(:test_move_no_uids)
+
+    # Start the move operation without returning UIDs
+    task = Task.async(fn -> Yugo.move(:test_move_no_uids, "1:3", "Archive", false) end)
+
+    # Simulate MOVE command and response
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 MOVE 1:3 "Archive"
+    S: 5 OK MOVE completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == :ok
+  end
+
+  # todo add copy/store/expunge fallback when capabilities doesn't support move
 end

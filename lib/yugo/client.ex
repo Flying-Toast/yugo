@@ -180,10 +180,9 @@ defmodule Yugo.Client do
     send_command(conn, cmd, &on_move_response(&1, &2, &3, return_uids, from))
   end
 
-  defp on_move_response(conn, :ok, _response, _return_uids, from) do
-    # TODO: currently not collecting the uids of the moved messages
-    # result = if return_uids, do: Parser.parse_move_uids(response), else: :ok
-    GenServer.reply(from, :ok)
+  defp on_move_response(conn, :ok, response, return_uids, from) do
+    result = if return_uids, do: Parser.parse_move_uids(response), else: :ok
+    GenServer.reply(from, result)
     maybe_idle(conn)
   end
 
