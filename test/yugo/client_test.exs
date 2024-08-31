@@ -274,24 +274,7 @@ defmodule Yugo.ClientTest do
               ]}
   end
 
-  # TODO: pending uid message returns
-  # test "move messages" do
-  #   socket = ssl_server(:test_move)
-
-  #   # Start the move operation
-  #   task = Task.async(fn -> Yugo.move(:test_move, "1:3", "Archive", true) end)
-
-  #   # Simulate MOVE command and response
-  #   assert_comms(socket, ~S"""
-  #   C: DONE
-  #   C: 5 MOVE 1:3 "Archive"
-  #   S: * OK [COPYUID 1234 1,2,3 101,102,103] Moved
-  #   S: 5 OK MOVE completed
-  #   """)
-
-  #   # Wait for the result and assert
-  #   assert Task.await(task) == {:ok, {[1, 2, 3], [101, 102, 103]}}
-  # end
+  # todo add copy/store/expunge fallback when capabilities doesn't support move
 
   test "move messages without returning UIDs" do
     socket = ssl_server(:test_move_no_uids)
@@ -310,5 +293,32 @@ defmodule Yugo.ClientTest do
     assert Task.await(task) == :ok
   end
 
-  # todo add copy/store/expunge fallback when capabilities doesn't support move
+  test "create mailbox" do
+    socket = ssl_server(:test_create)
+
+    # Start the create operation
+    task = Task.async(fn -> Yugo.create(:test_create, "New Folder") end)
+
+    # Simulate CREATE command and response for success case
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 CREATE "New Folder"
+    S: 5 OK CREATE completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == :ok
+
+    # Test failure case
+    task = Task.async(fn -> Yugo.create(:test_create, "Existing Folder") end)
+
+    # Simulate CREATE command and response for failure case
+    assert_comms(socket, ~S"""
+    C: 6 CREATE "Existing Folder"
+    S: 6 NO [ALREADYEXISTS] Mailbox already exists
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == {:error, "[ALREADYEXISTS] Mailbox already exists"}
+  end
 end

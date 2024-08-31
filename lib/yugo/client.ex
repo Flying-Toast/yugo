@@ -157,6 +157,16 @@ defmodule Yugo.Client do
   end
 
   @impl true
+  def handle_call({:create, mailbox_name}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_create_command(mailbox_name, from)
+
+    {:noreply, conn}
+  end
+
+  @impl true
   def handle_call({:list, reference, mailbox}, from, conn) do
     conn =
       conn
@@ -183,6 +193,21 @@ defmodule Yugo.Client do
   defp on_move_response(conn, :ok, response, return_uids, from) do
     result = if return_uids, do: Parser.parse_move_uids(response), else: :ok
     GenServer.reply(from, result)
+    maybe_idle(conn)
+  end
+
+  defp send_create_command(conn, mailbox_name, from) do
+    cmd = "CREATE #{quote_string(mailbox_name)}"
+    send_command(conn, cmd, &on_create_response(&1, &2, &3, from))
+  end
+
+  defp on_create_response(conn, :ok, _text, from) do
+    GenServer.reply(from, :ok)
+    maybe_idle(conn)
+  end
+
+  defp on_create_response(conn, :no, text, from) do
+    GenServer.reply(from, {:error, text})
     maybe_idle(conn)
   end
 
@@ -574,11 +599,22 @@ defmodule Yugo.Client do
         end
 
       {:tagged_response, {tag, status, text}} when status in [:bad, :no] ->
-        if status == :bad and String.contains?(text, "Expected DONE") do
-          # This is likely due to an IDLE command being interrupted
-          %{conn | idling: false, idle_timer: nil}
-        else
-          raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+        case {status, text} do
+          {:bad, text} ->
+            if String.contains?(text, "Expected DONE") do
+              # This is likely due to an IDLE command being interrupted
+              %{conn | idling: false, idle_timer: nil}
+            else
+              raise "Got `BAD` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+            end
+
+          {:no, text} ->
+            if String.contains?(text, "[ALREADYEXISTS] Mailbox already exists") do
+              {%{on_response: resp_fn}, conn} = pop_in(conn, [Access.key!(:tag_map), tag])
+              resp_fn.(conn, status, text)
+            else
+              raise "Got `NO` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+            end
         end
 
       :continuation ->

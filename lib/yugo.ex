@@ -204,4 +204,31 @@ defmodule Yugo do
       {:move, sequence_set, destination, return_uids}
     )
   end
+
+  @doc """
+    Creates a new mailbox (aka folder) with the given name.
+
+    ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `mailbox_name` - The name of the mailbox (aka folder) to create. Nested folders can be created by using a "/" delimiter.
+
+    ## Returns
+
+    * `:ok` if the mailbox was created successfully.
+    * `{:error, reason}` if the operation fails.
+
+    ## Example
+
+      iex> Yugo.create(:my_client, "Work/Projects")
+      :ok
+
+  """
+  @spec create(Client.name(), String.t()) :: :ok | {:error, String.t()}
+  def create(client_name, mailbox_name) do
+    GenServer.call(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:create, mailbox_name}
+    )
+  end
 end
