@@ -120,6 +120,18 @@ defmodule Yugo.Parser do
         num = String.to_integer(num)
         [uid_next: num]
 
+      Regex.match?(~r/^\[COPYUID /i, resp) ->
+        [validity, source_uids, destination_uids] =
+          Regex.run(~r/^\[COPYUID (\d+) (\S+) (\S+)\]/i, resp, capture: :all_but_first)
+
+        [
+          copyuid: %{
+            validity: String.to_integer(validity),
+            source_uids: parse_uid_set(source_uids),
+            destination_uids: parse_uid_set(destination_uids)
+          }
+        ]
+
       true ->
         []
     end

@@ -51,7 +51,8 @@ defmodule Yugo.ClientTest do
                    sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2
                  }
     end
   end
@@ -95,7 +96,8 @@ defmodule Yugo.ClientTest do
                    sender: [{"Bob Jones", "bobjones@example.org"}],
                    subject: "Foo Bar Baz Buzz Biz Boz",
                    to: [{nil, "foo@bar.com"}],
-                   from: [{"Bob Jones", "bobjones@example.org"}]
+                   from: [{"Bob Jones", "bobjones@example.org"}],
+                   seqnum: 2
                  }
     end
   end
@@ -134,7 +136,8 @@ defmodule Yugo.ClientTest do
                    ],
                    subject: "Hello! (subject)",
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2
                  }
     end
   end
@@ -180,7 +183,8 @@ defmodule Yugo.ClientTest do
                  sender: [{nil, "person@domain.com"}],
                  subject: "An HTML email",
                  to: [{nil, "bar@foo.com"}],
-                 from: [{"Aych T. Emmel", "person@domain.com"}]
+                 from: [{"Aych T. Emmel", "person@domain.com"}],
+                 seqnum: 2
                }
     end
   end
@@ -234,7 +238,8 @@ defmodule Yugo.ClientTest do
                    sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2
                  }
     end
   end

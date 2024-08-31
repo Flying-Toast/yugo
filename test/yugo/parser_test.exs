@@ -82,4 +82,35 @@ defmodule Yugo.ParserTest do
     [fetch: {0, :flags, ["\\Seen", "\\Recent"]}, fetch: {0, :uid, 84}] =
       Parser.parse_response(~S|* 0 fetch (UID 84 FLags (\Seen \Recent))|)
   end
+
+  test "parse COPYUID response" do
+    [
+      copyuid: %{
+        validity: 38_675_294,
+        source_uids: [4, 5, 6, 7, 9, 12],
+        destination_uids: [304, 305, 306, 307, 309, 312]
+      }
+    ] =
+      Parser.parse_response("* OK [COPYUID 38675294 4:7,9,12 304:307,309,312] Copy completed\r\n")
+
+    [copyuid: %{validity: 123_456, source_uids: [1], destination_uids: [2001]}] =
+      Parser.parse_response("* OK [COPYUID 123456 1 2001] Copy completed\r\n")
+
+    result = Parser.parse_response("* OK [COPYUID 987654 1:1000 2001:3000] Copy completed\r\n")
+
+    assert [
+             copyuid: %{
+               validity: 987_654,
+               source_uids: source_uids,
+               destination_uids: destination_uids
+             }
+           ] = result
+
+    assert length(source_uids) == 1000
+    assert length(destination_uids) == 1000
+    assert Enum.at(source_uids, 0) == 1
+    assert Enum.at(source_uids, -1) == 1000
+    assert Enum.at(destination_uids, 0) == 2001
+    assert Enum.at(destination_uids, -1) == 3000
+  end
 end
