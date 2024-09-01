@@ -260,4 +260,26 @@ defmodule Yugo do
       {:fetch, sequence_set}
     )
   end
+
+  @doc """
+  Retrieves the number of messages in the currently selected mailbox.
+
+  ## Parameters
+
+  * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+
+  ## Returns
+
+  An integer representing the number of messages in the mailbox.
+
+  ## Example
+
+    iex> Yugo.count(:my_client)
+    42
+
+  """
+  @spec count(Client.name()) :: non_neg_integer()
+  def count(client_name) do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, :count)
+  end
 end

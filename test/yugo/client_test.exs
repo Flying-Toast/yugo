@@ -434,4 +434,28 @@ defmodule Yugo.ClientTest do
     assert msg2.seqnum == 3
     assert msg3.seqnum == 4
   end
+
+  test "retrieves message count" do
+    socket = ssl_server(:test_count)
+    # Check the default count is returned
+    assert Yugo.count(:test_count) == 1
+
+    # Fake a second message
+    assert_comms(socket, ~S"""
+    S: * 2 EXISTS
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 oK done
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 fetcH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 ok fetched
+    """)
+
+    # Check the count is updated
+    assert Yugo.count(:test_count) == 2
+  end
 end

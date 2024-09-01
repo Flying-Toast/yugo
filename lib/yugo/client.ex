@@ -158,6 +158,11 @@ defmodule Yugo.Client do
   end
 
   @impl true
+  def handle_call(:count, _from, conn) do
+    {:reply, conn.num_exists, conn}
+  end
+
+  @impl true
   def handle_call({:move, sequence_set, destination, return_uids}, from, conn) do
     conn =
       conn
