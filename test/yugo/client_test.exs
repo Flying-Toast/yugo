@@ -321,4 +321,117 @@ defmodule Yugo.ClientTest do
     # Wait for the result and assert
     assert Task.await(task) == {:error, "[ALREADYEXISTS] Mailbox already exists"}
   end
+
+  test "fetch prior message" do
+    socket = ssl_server(:test_fetch)
+
+    # Start the fetch operation for a prior message
+    Yugo.fetch(:test_fetch, "2")
+
+    # Simulate FETCH command and response for the prior message
+    assert_comms(socket, ~S"""
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 oK done
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 fetcH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 ok fetched
+    """)
+
+    # Ensure the fetched prior message is received
+    assert_receive {:email, :test_fetch, prior_msg}, 10000
+
+    # Assert the contents of the prior message
+    assert prior_msg ==
+             %{
+               bcc: [],
+               body:
+                 {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
+                  "Hello 123\r\n456"},
+               cc: [],
+               date: ~U[2022-12-07 13:02:41Z],
+               flags: [:seen],
+               in_reply_to: nil,
+               message_id: "fjaelwkjfi oaf<$ ))) \"",
+               reply_to: [{"Marge", "marge@simpsons-family.com"}],
+               sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
+               subject: nil,
+               to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+               from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+               seqnum: 2
+             }
+  end
+
+  test "fetch multiple prior messages" do
+    socket = ssl_server(:test_fetch_multiple)
+
+    # Start the fetch operation for multiple messages
+    Yugo.fetch(:test_fetch_multiple, "2:4")
+
+    # Simulate FETCH commands and responses for individual messages
+    assert_comms(socket, ~S"""
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 OK Fetch completed
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 OK Fetch completed
+    C: 7 FETCH 3 (BODY FLAGS ENVELOPE)
+    S: * 3 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 7 OK Fetch completed
+    C: 8 FETCH 3 (BODY.PEEK[1])
+    S: * 3 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 8 OK Fetch completed
+    C: 9 FETCH 4 (BODY FLAGS ENVELOPE)
+    S: * 4 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 9 OK Fetch completed
+    C: 10 FETCH 4 (BODY.PEEK[1])
+    S: * 4 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 10 OK Fetch completed
+    """)
+
+    # Ensure the fetched messages are received
+    assert_receive {:email, :test_fetch_multiple, msg1}, 10000
+    assert_receive {:email, :test_fetch_multiple, msg2}, 10000
+    assert_receive {:email, :test_fetch_multiple, msg3}, 10000
+
+    # Assert the contents of each message
+    Enum.each([msg1, msg2, msg3], fn msg ->
+      assert msg ==
+               %{
+                 bcc: [],
+                 body:
+                   {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
+                    "Hello 123\r\n456"},
+                 cc: [],
+                 date: ~U[2022-12-07 13:02:41Z],
+                 flags: [:seen],
+                 in_reply_to: nil,
+                 message_id: "fjaelwkjfi oaf<$ ))) \"",
+                 reply_to: [{"Marge", "marge@simpsons-family.com"}],
+                 sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                 subject: nil,
+                 to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+                 from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                 seqnum: msg.seqnum
+               }
+    end)
+
+    # Assert that the seqnums are correct
+    assert msg1.seqnum == 2
+    assert msg2.seqnum == 3
+    assert msg3.seqnum == 4
+  end
 end

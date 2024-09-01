@@ -142,6 +142,17 @@ defmodule Yugo.Client do
   end
 
   @impl true
+  def handle_cast({:fetch, sequence_set}, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> queue_fetch_messages(sequence_set)
+      |> maybe_idle()
+
+    {:noreply, conn}
+  end
+
+  @impl true
   def handle_call({:capabilities}, _from, conn) do
     {:reply, conn.capabilities, conn}
   end
@@ -209,6 +220,21 @@ defmodule Yugo.Client do
   defp on_create_response(conn, :no, text, from) do
     GenServer.reply(from, {:error, text})
     maybe_idle(conn)
+  end
+
+  defp queue_fetch_messages(conn, sequence_set) do
+    seqnums = Parser.parse_uid_set(sequence_set)
+
+    new_messages =
+      seqnums
+      |> Enum.reject(&Map.has_key?(conn.unprocessed_messages, &1))
+      |> Map.new(&{&1, %{fetched: nil}})
+
+    %{
+      conn
+      | unprocessed_messages: Map.merge(conn.unprocessed_messages, new_messages),
+        fetch_queue: conn.fetch_queue ++ seqnums
+    }
   end
 
   @impl true
@@ -448,56 +474,103 @@ defmodule Yugo.Client do
   end
 
   defp maybe_process_messages(conn) do
-    if command_in_progress?(conn) or conn.unprocessed_messages == %{} or conn.state != :selected do
+    if command_in_progress?(conn) or conn.state != :selected do
       conn
     else
-      process_earliest_message(conn)
+      process_next_message(conn)
     end
   end
 
-  defp process_earliest_message(conn) do
-    {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
-
+  defp process_next_message(conn) do
     cond do
-      not Map.has_key?(msg, :fetched) ->
+      conn.fetch_queue != [] ->
+        [seqnum | rest] = conn.fetch_queue
+        conn = %{conn | fetch_queue: rest}
+        process_message(conn, seqnum)
+
+      conn.unprocessed_messages != %{} ->
+        {seqnum, _} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+        process_message(conn, seqnum)
+
+      true ->
+        conn
+    end
+  end
+
+  defp process_message(conn, seqnum) do
+    msg = Map.get(conn.unprocessed_messages, seqnum, %{})
+
+    case msg do
+      %{fetched: nil} ->
         conn
         |> fetch_message(seqnum)
         |> maybe_process_messages()
 
-      msg.fetched == :filter ->
-        parts_to_fetch =
-          [flags: "FLAGS", envelope: "ENVELOPE"]
-          |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
-          |> Enum.map(&elem(&1, 1))
-
-        parts_to_fetch = ["BODY" | parts_to_fetch]
-
-        conn =
-          conn
-          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
-
-        unless Enum.empty?(parts_to_fetch) do
-          conn
-          |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
-        else
-          conn
-        end
-
-      msg.fetched == :pre_body ->
-        body_parts =
-          body_part_paths(msg.body_structure)
-          |> Enum.map(&"BODY.PEEK[#{&1}]")
-
+      %{fetched: :filter} ->
         conn
-        |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
-          put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
-        end)
+        |> fetch_message_parts(seqnum)
+        |> maybe_process_messages()
 
-      msg.fetched == :full ->
+      %{fetched: :pre_body} ->
+        conn
+        |> fetch_message_body(seqnum)
+        |> maybe_process_messages()
+
+      %{fetched: :full} ->
         conn
         |> release_message(seqnum)
+        |> maybe_process_messages()
+
+      _ ->
+        conn
+        |> fetch_message(seqnum)
+        |> maybe_process_messages()
     end
   end
+
+  # defp process_earliest_message(conn) do
+  #   {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+
+  #   cond do
+  #     not Map.has_key?(msg, :fetched) ->
+  #       conn
+  #       |> fetch_message(seqnum)
+  #       |> maybe_process_messages()
+
+  #     msg.fetched == :filter ->
+  #       parts_to_fetch =
+  #         [flags: "FLAGS", envelope: "ENVELOPE"]
+  #         |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
+  #         |> Enum.map(&elem(&1, 1))
+
+  #       parts_to_fetch = ["BODY" | parts_to_fetch]
+
+  #       conn =
+  #         conn
+  #         |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
+
+  #       unless Enum.empty?(parts_to_fetch) do
+  #         conn
+  #         |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
+  #       else
+  #         conn
+  #       end
+
+  #     msg.fetched == :pre_body ->
+  #       body_parts =
+  #         body_part_paths(msg.body_structure)
+  #         |> Enum.map(&"BODY.PEEK[#{&1}]")
+
+  #       conn
+  #       |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
+  #         put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
+  #       end)
+
+  #     msg.fetched == :full ->
+  #       conn
+  #       |> release_message(seqnum)
+  #   end
+  # end
 
   defp body_part_paths(body_structure, path_acc \\ []) do
     case body_structure do
@@ -579,6 +652,39 @@ defmodule Yugo.Client do
       conn
       |> send_command("FETCH #{seqnum} (#{conn.attrs_needed_by_filters})")
     end
+  end
+
+  defp fetch_message_parts(conn, seqnum) do
+    parts_to_fetch =
+      [flags: "FLAGS", envelope: "ENVELOPE"]
+      |> Enum.reject(fn {key, _} -> Map.has_key?(conn.unprocessed_messages[seqnum], key) end)
+      |> Enum.map(&elem(&1, 1))
+
+    parts_to_fetch = ["BODY"] ++ parts_to_fetch
+
+    conn =
+      conn
+      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
+
+    unless Enum.empty?(parts_to_fetch) do
+      conn
+      |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
+    else
+      conn
+    end
+  end
+
+  defp fetch_message_body(conn, seqnum) do
+    msg = Map.get(conn.unprocessed_messages, seqnum)
+
+    body_parts =
+      body_part_paths(msg.body_structure)
+      |> Enum.map(&"BODY.PEEK[#{&1}]")
+
+    conn
+    |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
+      put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
+    end)
   end
 
   defp apply_action(conn, action) do

@@ -231,4 +231,33 @@ defmodule Yugo do
       {:create, mailbox_name}
     )
   end
+
+  @doc """
+  Fetches prior messages based on the given sequence set.
+
+  This function sends a request to fetch messages asynchronously. The fetched messages
+  will be delivered to subscribers just like new messages.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `sequence_set` - A string representing the sequence set of messages to fetch.
+
+  ## Returns
+
+    * `:ok` immediately, as the operation is asynchronous.
+
+  ## Example
+
+      iex> Yugo.fetch(:my_client, "1:10")
+      :ok
+
+  """
+  @spec fetch(Client.name(), String.t()) :: :ok
+  def fetch(client_name, sequence_set) do
+    GenServer.cast(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:fetch, sequence_set}
+    )
+  end
 end

@@ -34,7 +34,8 @@ defmodule Yugo.Conn do
           unprocessed_messages: %{integer: %{}},
           attrs_needed_by_filters: String.t(),
           ssl_verify: :verify_none | :verify_peer,
-          list_response_acc: [%{flags: [String.t()], delimiter: String.t(), name: String.t()}]
+          list_response_acc: [%{flags: [String.t()], delimiter: String.t(), name: String.t()}],
+          fetch_queue: [integer]
         }
 
   @derive {Inspect, except: [:password]}
@@ -68,6 +69,7 @@ defmodule Yugo.Conn do
     filters: [],
     unprocessed_messages: %{},
     attrs_needed_by_filters: "",
-    list_response_acc: []
+    list_response_acc: [],
+    fetch_queue: []
   ]
 end
