@@ -158,8 +158,13 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_call(:count, _from, conn) do
-    {:reply, conn.num_exists, conn}
+  def handle_call(:count, from, conn) do
+    if conn.num_exists == nil do
+      Process.send_after(self(), {:retry_count, from}, 1000)
+      {:noreply, conn}
+    else
+      {:reply, max(0, conn.num_exists), conn}
+    end
   end
 
   @impl true
@@ -240,6 +245,13 @@ defmodule Yugo.Client do
       | unprocessed_messages: Map.merge(conn.unprocessed_messages, new_messages),
         fetch_queue: conn.fetch_queue ++ seqnums
     }
+  end
+
+  @impl true
+  def handle_info({:retry_count, from}, conn) do
+    count = conn.num_exists || 0
+    GenServer.reply(from, max(0, count))
+    {:noreply, conn}
   end
 
   @impl true
