@@ -202,7 +202,7 @@ defmodule Yugo.Client do
 
   defp on_list_response(conn, :ok, response, from) do
     mailbox_names = Enum.map(response, fn %{name: name} -> name end)
-    GenServer.reply(from, {:ok, mailbox_names})
+    GenServer.reply(from, mailbox_names)
     maybe_idle(conn)
   end
 
@@ -544,50 +544,6 @@ defmodule Yugo.Client do
         |> maybe_process_messages()
     end
   end
-
-  # defp process_earliest_message(conn) do
-  #   {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
-
-  #   cond do
-  #     not Map.has_key?(msg, :fetched) ->
-  #       conn
-  #       |> fetch_message(seqnum)
-  #       |> maybe_process_messages()
-
-  #     msg.fetched == :filter ->
-  #       parts_to_fetch =
-  #         [flags: "FLAGS", envelope: "ENVELOPE"]
-  #         |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
-  #         |> Enum.map(&elem(&1, 1))
-
-  #       parts_to_fetch = ["BODY" | parts_to_fetch]
-
-  #       conn =
-  #         conn
-  #         |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
-
-  #       unless Enum.empty?(parts_to_fetch) do
-  #         conn
-  #         |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
-  #       else
-  #         conn
-  #       end
-
-  #     msg.fetched == :pre_body ->
-  #       body_parts =
-  #         body_part_paths(msg.body_structure)
-  #         |> Enum.map(&"BODY.PEEK[#{&1}]")
-
-  #       conn
-  #       |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
-  #         put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
-  #       end)
-
-  #     msg.fetched == :full ->
-  #       conn
-  #       |> release_message(seqnum)
-  #   end
-  # end
 
   defp body_part_paths(body_structure, path_acc \\ []) do
     case body_structure do

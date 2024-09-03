@@ -105,9 +105,7 @@ defmodule Yugo do
       ["INBOX", "Sent", "Drafts"]
 
   """
-  @spec list(Client.name(), reference :: String.t(), mailbox :: String.t()) :: [
-          {:name, String.t()} | {:delimiter, String.t()} | {:attributes, [String.t()]}
-        ]
+  @spec list(Client.name(), reference :: String.t(), mailbox :: String.t()) :: [String.t()]
   def list(client_name, reference \\ "", mailbox \\ "%") do
     GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:list, reference, mailbox})
   end
