@@ -329,7 +329,14 @@ defmodule Yugo.Parser do
     {[name, _adl, mailbox, host], rest} =
       parse_list(rest, [&parse_nstring/1, &parse_nstring/1, &parse_nstring/1, &parse_nstring/1])
 
-    {{name, "#{String.downcase(mailbox)}@#{String.downcase(host)}"}, rest}
+    email =
+      case {mailbox, host} do
+        {nil, _} -> nil
+        {_, nil} -> nil
+        {m, h} -> "#{String.downcase(m)}@#{String.downcase(h)}"
+      end
+
+    {{name, email}, rest}
   end
 
   defp parse_address_list(rest) do
