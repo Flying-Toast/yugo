@@ -7,6 +7,7 @@ defmodule Yugo.MixProject do
       version: "1.0.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       description: "Yugo is an easy and high-level IMAP client library.",
       package: package(),
@@ -19,6 +20,9 @@ defmodule Yugo.MixProject do
       ]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   def application do
     [

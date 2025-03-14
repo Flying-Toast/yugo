@@ -116,10 +116,12 @@ defmodule Helpers.Client do
       ssl_verify: :verify_none
     ]
 
+    pid = start_link_supervised!({Yugo.GenTCPServer, {listener, self()}})
+
     start_link_supervised!({Yugo.Client, opts})
     Yugo.subscribe(name)
 
-    {:ok, socket} = :gen_tcp.accept(listener, 1000)
+    socket = GenServer.call(pid, :get_socket)
     on_exit(fn -> :gen_tcp.close(socket) end)
 
     socket
@@ -148,11 +150,12 @@ defmodule Helpers.Client do
       ssl_verify: :verify_none
     ]
 
+    pid = start_link_supervised!({Yugo.SSLServer, listener})
+
     start_link_supervised!({Yugo.Client, opts})
     Yugo.subscribe(name)
 
-    {:ok, socket} = :ssl.transport_accept(listener, 1000)
-    {:ok, socket} = :ssl.handshake(socket, 1000)
+    socket = GenServer.call(pid, :get_socket)
     on_exit(fn -> :ssl.close(socket) end)
 
     socket
