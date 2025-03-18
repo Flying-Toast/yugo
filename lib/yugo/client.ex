@@ -114,8 +114,7 @@ defmodule Yugo.Client do
 
   @impl true
   def init(args) do
-    send(self(), {:do_init, args})
-    {:ok, nil}
+    {:ok, nil, {:continue, args}}
   end
 
   @impl true
@@ -143,7 +142,7 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_info({:do_init, args}, _state) do
+  def handle_continue(args, _state) do
     {:ok, socket} =
       if args[:tls] do
         :ssl.connect(
