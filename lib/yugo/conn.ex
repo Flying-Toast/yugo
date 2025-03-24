@@ -6,6 +6,7 @@ defmodule Yugo.Conn do
           tls: boolean,
           socket: :gen_tcp.socket() | :ssl.sslsocket(),
           server: String.t(),
+          auth_type: :login | :xoauth2,
           username: String.t(),
           mailbox: String.t(),
           password: String.t(),
@@ -43,6 +44,7 @@ defmodule Yugo.Conn do
     :tls,
     :socket,
     :server,
+    :auth_type,
     :username,
     :mailbox,
     # only stored temporarily; gets cleared from memory after sending LOGIN

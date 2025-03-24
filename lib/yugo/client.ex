@@ -59,6 +59,8 @@ defmodule Yugo.Client do
     you can pass the name of one as a string. A single [`Client`](`Yugo.Client`) can only monitor a single mailbox -
     to monitor multiple mailboxes, you need to start multiple [`Client`](`Yugo.Client`)s.
 
+    * `:auth_type` - Authentication type can be either :login for simple username password authentication or :xoauth2 for XOAUTH2 authentication
+
   ### Advanced Arguments
 
     The following options are provided because they can be useful, but in most cases you won't
@@ -74,6 +76,7 @@ defmodule Yugo.Client do
   """
   @spec start_link(
           server: String.t(),
+          auth_type: :login | :xoauth2,
           username: String.t(),
           password: String.t(),
           name: name,
@@ -89,6 +92,7 @@ defmodule Yugo.Client do
 
     args =
       args
+      |> Keyword.put_new(:auth_type, :login)
       |> Keyword.put_new(:port, 993)
       |> Keyword.put_new(:tls, true)
       |> Keyword.put_new(:mailbox, "INBOX")
@@ -159,6 +163,7 @@ defmodule Yugo.Client do
       tls: args[:tls],
       socket: socket,
       server: args[:server],
+      auth_type: args[:auth_type],
       username: args[:username],
       password: args[:password],
       mailbox: args[:mailbox],
@@ -307,10 +312,21 @@ defmodule Yugo.Client do
     |> do_login()
   end
 
-  defp do_login(conn) do
+  defp do_login(%Conn{auth_type: :login} = conn) do
     conn
     |> send_command(
       "LOGIN #{quote_string(conn.username)} #{quote_string(conn.password)}",
+      &on_login_response/3
+    )
+    |> Map.put(:password, "")
+  end
+
+  defp do_login(%Conn{auth_type: :xoauth2} = conn) do
+    auth_string = Base.encode64(IO.iodata_to_binary(["user=", conn.username, 1, "auth=Bearer ", conn.password, 1, 1]))
+
+    conn
+    |> send_command(
+      "AUTHENTICATE XOAUTH2 #{quote_string(auth_string)}",
       &on_login_response/3
     )
     |> Map.put(:password, "")
@@ -506,6 +522,11 @@ defmodule Yugo.Client do
       conn
       |> send_command("FETCH #{seqnum} (#{conn.attrs_needed_by_filters})")
     end
+  end
+
+  # Sends a \r\n after failed xoauth2 authentication as required
+  defp apply_action(%Conn{auth_type: :xoauth2, state: :not_authenticated} = conn, :continuation) do
+    send_raw(conn, "\r\n")
   end
 
   defp apply_action(conn, action) do
