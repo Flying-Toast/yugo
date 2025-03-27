@@ -104,100 +104,66 @@ defmodule Yugo.Client do
 
   @common_connect_opts [packet: :line, active: :once, mode: :binary]
 
-  defp ssl_opts(server, ssl_verify),
-    do:
-      [
-        server_name_indication: server,
-        verify: ssl_verify,
-        cacerts: :public_key.cacerts_get()
-      ] ++ @common_connect_opts
+  defp ssl_opts(server, ssl_verify) do
+    [
+      server_name_indication: server,
+      verify: ssl_verify,
+      cacerts: :public_key.cacerts_get()
+    ] ++ @common_connect_opts
+  end
 
-  @impl true
+  @impl GenServer
   def init(args) do
-    {:ok, nil, {:continue, args}}
+    {:ok, nil, {:continue, {:initialize, args}}}
   end
 
-  @impl true
+  @impl GenServer
   def terminate(_reason, conn) do
-    conn
-    |> send_command("LOGOUT")
+    Conn.send_command(conn, :logout)
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:subscribe, pid, filter}, conn) do
-    conn =
-      %{conn | filters: [{filter, pid} | conn.filters]}
-      |> update_attrs_needed_by_filters()
+    conn = Conn.subscribe(conn, pid, filter)
 
     {:noreply, conn}
   end
 
-  @impl true
   def handle_cast({:unsubscribe, pid}, conn) do
-    conn =
-      %{conn | filters: Enum.reject(conn.filters, &(elem(&1, 1) == pid))}
-      |> update_attrs_needed_by_filters()
+    conn = Conn.unsubscribe(conn, pid)
 
     {:noreply, conn}
   end
 
-  @impl true
-  def handle_continue(args, _state) do
-    {:ok, socket} =
-      if args[:tls] do
-        :ssl.connect(
-          args[:server],
-          args[:port],
-          ssl_opts(args[:server], args[:ssl_verify])
-        )
-      else
-        :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
-      end
-
-    conn = %Conn{
-      my_name: args[:name],
-      tls: args[:tls],
-      socket: socket,
-      server: args[:server],
-      username: args[:username],
-      password: args[:password],
-      mailbox: args[:mailbox],
-      ssl_verify: args[:ssl_verify]
-    }
-
+  @impl GenServer
+  def handle_continue({:initialize, args}, _state) do
+    conn = Conn.init(args)
     {:noreply, conn}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({socket_kind, socket, data}, conn) when socket_kind in [:ssl, :tcp] do
     data = recv_literals(conn, [data])
 
     # we set [active: :once] each time so that we can parse packets that have synchronizing literals spanning over multiple lines
-    :ok =
-      if conn.tls do
-        :ssl.setopts(socket, active: :once)
-      else
-        :inet.setopts(socket, active: :once)
-      end
+    :ok = Conn.set_socket_options(conn, socket, active: :once)
 
     %Conn{} = conn = handle_packet(data, conn)
 
     {:noreply, conn}
   end
 
-  @impl true
   def handle_info({close_message, _sock}, conn)
       when close_message in [:tcp_closed, :ssl_closed] do
     {:stop, :normal, conn}
   end
 
   @noop_poll_interval 5000
-  @impl true
   def handle_info(:poll_with_noop, conn) do
     Process.send_after(self(), :poll_with_noop, @noop_poll_interval)
 
     conn =
-      if command_in_progress?(conn) do
+      if Conn.command_in_progress?(conn) do
         conn
       else
         conn
@@ -208,25 +174,10 @@ defmodule Yugo.Client do
   end
 
   @idle_timeout 1000 * 60 * 27
-  @impl true
   def handle_info(:idle_timeout, conn) do
-    conn =
-      %{conn | idle_timed_out: true}
-      |> cancel_idle()
+    conn = Conn.idle_timed_out(conn)
 
     {:noreply, conn}
-  end
-
-  defp update_attrs_needed_by_filters(conn) do
-    attrs =
-      [
-        Enum.any?(conn.filters, fn {f, _} -> Filter.needs_flags?(f) end) && "FLAGS",
-        Enum.any?(conn.filters, fn {f, _} -> Filter.needs_envelope?(f) end) && "ENVELOPE"
-      ]
-      |> Enum.reject(&(&1 == false))
-      |> Enum.join(" ")
-
-    %{conn | attrs_needed_by_filters: attrs}
   end
 
   # If the previously received line ends with `{123}` (a synchronizing literal), parse more lines until we
@@ -249,61 +200,54 @@ defmodule Yugo.Client do
       end
     else
       # we need more bytes to complete the current literal. Recv the next line.
-      {:ok, next_line} =
-        if conn.tls do
-          :ssl.recv(conn.socket, 0)
-        else
-          :gen_tcp.recv(conn.socket, 0)
-        end
+      {:ok, next_line} = Conn.recv(conn)
 
       recv_literals(conn, [next_line | acc], n_remaining - byte_size(next_line))
     end
   end
 
-  defp handle_packet(data, conn) do
-    if conn.got_server_greeting do
-      actions = Parser.parse_response(data)
+  defp handle_packet(data, %Conn{got_server_greeting: true} = conn) do
+    actions = Parser.parse_response(data)
 
-      conn =
-        conn
-        |> apply_actions(actions)
-
-      conn =
-        if conn.idling and conn.unprocessed_messages != %{} do
-          conn
-          |> cancel_idle()
-        else
-          conn
-        end
-
+    conn =
       conn
-      |> maybe_process_messages()
-      |> maybe_idle()
-    else
-      # ignore the first message from the server, which is the unsolicited greeting
-      %{conn | got_server_greeting: true}
-      |> send_command("CAPABILITY", &on_unauthed_capability_response/3)
-    end
+      |> apply_actions(actions)
+
+    conn =
+      if conn.idling and conn.unprocessed_messages != %{} do
+        Conn.cancel_idle_timer(conn)
+      else
+        conn
+      end
+
+    conn
+    |> maybe_process_messages()
+    |> maybe_idle()
+  end
+
+  defp handle_packet(_data, %Conn{} = conn) do
+    # ignore the first message from the server, which is the unsolicited greeting
+    conn
+    |> Conn.greet()
+    |> Conn.send_command(:capability, on_response: &on_unauthed_capability_response/3)
   end
 
   defp on_unauthed_capability_response(conn, :ok, _text) do
-    if !conn.tls do
-      if "STARTTLS" in conn.capabilities do
-        conn
-        |> send_command("STARTTLS", &on_starttls_response/3)
-      else
+    cond do
+      Conn.using_tls?(conn) ->
+        do_login(conn)
+
+      Conn.has_capability?(conn, "STARTTLS") ->
+        Conn.send_command(conn, :starttls, on_response: &on_starttls_response/3)
+
+      true ->
         raise "Server does not support STARTTLS as required by RFC3501."
-      end
-    else
-      conn
-      |> do_login()
     end
   end
 
   defp on_starttls_response(conn, :ok, _text) do
-    {:ok, socket} = :ssl.connect(conn.socket, ssl_opts(conn.server, conn.ssl_verify), :infinity)
-
-    %{conn | tls: true, socket: socket}
+    conn
+    |> Conn.switch_to_tls()
     |> do_login()
   end
 
@@ -317,8 +261,9 @@ defmodule Yugo.Client do
   end
 
   defp on_login_response(conn, :ok, _text) do
-    %{conn | state: :authenticated}
-    |> send_command("CAPABILITY", &on_authed_capability_response/3)
+    conn
+    |> Conn.put_state(:authenticated)
+    |> Conn.send_command(:capability, on_response: &on_authed_capability_response/3)
   end
 
   defp on_authed_capability_response(conn, :ok, _text) do
@@ -327,56 +272,54 @@ defmodule Yugo.Client do
   end
 
   defp on_select_response(conn, :ok, text) do
-    conn = %{conn | state: :selected}
+    mailbox_mutability =
+      if Regex.match?(~r/^\[READ-ONLY\]/i, text) do
+        :read_only
+      else
+        :read_write
+      end
 
-    if Regex.match?(~r/^\[READ-ONLY\]/i, text) do
-      %{conn | mailbox_mutability: :read_only}
-    else
-      %{conn | mailbox_mutability: :read_write}
-    end
+    conn
+    |> Conn.put_state(:selected)
+    |> Conn.put_mailbox_mutability(mailbox_mutability)
     |> maybe_noop_poll()
   end
 
-  defp command_in_progress?(conn), do: conn.tag_map != %{}
-
   # starts NOOP polling unless the server supports IDLE
   defp maybe_noop_poll(conn) do
-    unless "IDLE" in conn.capabilities do
+    if not Conn.has_capability?(conn, "IDLE") do
       send(self(), :poll_with_noop)
     end
 
     conn
   end
 
-  defp on_idle_response(conn, :ok, _text) do
-    if conn.idle_timed_out do
-      maybe_idle(conn)
-    else
-      conn
-    end
+  defp on_idle_response(%Conn{idle_timed_out: true} = conn, :ok, _text) do
+    maybe_idle(conn)
+  end
+
+  defp on_idle_response(%Conn{} = conn, :ok, _text) do
+    conn
   end
 
   # IDLEs if there is no command in progress, we're not already idling, and the server supports IDLE
-  defp maybe_idle(conn) do
-    if "IDLE" in conn.capabilities and not command_in_progress?(conn) and not conn.idling do
-      timer = Process.send_after(self(), :idle_timeout, @idle_timeout)
-
-      %{conn | idling: true, idle_timer: timer, idle_timed_out: false}
-      |> send_command("IDLE", &on_idle_response/3)
+  defp maybe_idle(%Conn{idling: false} = conn) do
+    if Conn.has_capability?(conn, "IDLE") and not Conn.command_in_progress?(conn) do
+      conn
+      |> Conn.set_idling(self())
+      |> Conn.send_command(:idle, on_response: &on_idle_response/3)
     else
       conn
     end
   end
 
-  defp cancel_idle(conn) do
-    Process.cancel_timer(conn.idle_timer)
-
-    %{conn | idling: false, idle_timer: nil}
-    |> send_raw("DONE\r\n")
+  defp maybe_idle(%Conn{} = conn) do
+    conn
   end
 
   defp maybe_process_messages(conn) do
-    if command_in_progress?(conn) or conn.unprocessed_messages == %{} or conn.state != :selected do
+    if Conn.command_in_progress?(conn) or conn.unprocessed_messages == %{} or
+         conn.state != :selected do
       conn
     else
       process_earliest_message(conn)
@@ -384,15 +327,15 @@ defmodule Yugo.Client do
   end
 
   defp process_earliest_message(conn) do
-    {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+    {seqnum, msg} = Conn.earliest_unprocessed_message(conn)
 
-    cond do
-      not Map.has_key?(msg, :fetched) ->
+    case Map.get(msg, :fetched) do
+      nil ->
         conn
         |> fetch_message(seqnum)
         |> maybe_process_messages()
 
-      msg.fetched == :filter ->
+      :filter ->
         parts_to_fetch =
           [flags: "FLAGS", envelope: "ENVELOPE"]
           |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
@@ -400,30 +343,27 @@ defmodule Yugo.Client do
 
         parts_to_fetch = ["BODY" | parts_to_fetch]
 
-        conn =
-          conn
-          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
+        conn = Conn.map_unprocessed_message(conn, seqnum, %{fetched: :pre_body})
 
-        unless Enum.empty?(parts_to_fetch) do
-          conn
-          |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
+        if Enum.any?(parts_to_fetch) do
+          Conn.send_command(conn, {:fetch, seqnum, parts_to_fetch})
         else
           conn
         end
 
-      msg.fetched == :pre_body ->
+      :pre_body ->
         body_parts =
           body_part_paths(msg.body_structure)
           |> Enum.map(&"BODY.PEEK[#{&1}]")
 
-        conn
-        |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
-          put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
-        end)
+        Conn.send_command(conn, {:fetch, seqnum, body_parts},
+          on_response: fn conn, :ok, _text ->
+            Conn.map_unprocessed_message(conn, seqnum, %{fetched: :full})
+          end
+        )
 
-      msg.fetched == :full ->
-        conn
-        |> release_message(seqnum)
+      :full ->
+        release_message(conn, seqnum)
     end
   end
 
@@ -450,7 +390,7 @@ defmodule Yugo.Client do
 
   # Removes the message from conn.unprocessed_messages and sends it to subscribers with matching filters
   defp release_message(conn, seqnum) do
-    {msg, conn} = pop_in(conn, [Access.key!(:unprocessed_messages), seqnum])
+    {msg, conn} = Conn.pop_unprocessed_messages(conn, seqnum)
 
     for {filter, pid} <- conn.filters do
       if Filter.accepts?(filter, msg) do
@@ -496,15 +436,14 @@ defmodule Yugo.Client do
 
   # FETCHes the message attributes needed to apply filters
   defp fetch_message(conn, seqnum) do
-    conn =
-      conn
-      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :filter)
+    conn = Conn.map_unprocessed_message(conn, seqnum, %{fetched: :filter})
 
-    if conn.attrs_needed_by_filters == "" do
-      conn
-    else
-      conn
-      |> send_command("FETCH #{seqnum} (#{conn.attrs_needed_by_filters})")
+    case Conn.filter_attributes(conn) do
+      [] ->
+        conn
+
+      filter_attributes ->
+        Conn.send_command(conn, {:fetch, seqnum, filter_attributes})
     end
   end
 
