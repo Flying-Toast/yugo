@@ -1,4 +1,7 @@
 defmodule Yugo.Transport do
+  alias Yugo.Transport.Ssl, as: SslTransport
+  alias Yugo.Transport.Tcp, as: TcpTransport
+
   @type socket :: :inet.socket()
   @type command :: String.t()
   @type packet :: String.t() | binary() | term()

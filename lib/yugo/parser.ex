@@ -1,6 +1,8 @@
 defmodule Yugo.Parser do
   @moduledoc false
 
+  require Logger
+
   def system_flags_to_atoms(flags) do
     for flag <- flags do
       case String.upcase(flag) do
@@ -176,12 +178,17 @@ defmodule Yugo.Parser do
   defp parse_msg_atts_aux("", acc), do: acc
 
   defp parse_msg_atts_aux(rest, acc) do
-    {att, rest} = parse_one_att(rest)
-    parse_msg_atts_aux(rest, [att | acc])
+    case parse_one_att(rest) do
+      {att, rest} ->
+        parse_msg_atts_aux(rest, [att | acc])
+
+      _ ->
+        acc
+    end
   end
 
-  defp parse_one_att(rest) do
-    [name, rest] = Regex.run(~r/^ ?(\S+) (.*)$/is, rest, capture: :all_but_first)
+  defp parse_one_att(input) do
+    [name, rest] = Regex.run(~r/^ ?(\S+) (.*)$/is, input, capture: :all_but_first)
     name = String.upcase(name)
 
     cond do
@@ -239,6 +246,14 @@ defmodule Yugo.Parser do
 
         {content, rest} = parse_string(rest)
         {{:body_content, {body_number, content}}, rest}
+
+      # name == "INTERNALDATE" ->
+      #   [date, rest] = Regex.run(~r/"(?:\\.|[^"\\])*" (.*)/, rest)
+      #   {{:internal_date, rfc5322_to_datetime(date)}, rest}
+
+      true ->
+        Logger.warning("[#{inspect(Yugo.Client)}] [Parser] #{inspect(input)}")
+        nil
     end
   end
 

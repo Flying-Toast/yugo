@@ -1,5 +1,5 @@
 defmodule Yugo.ClientTest do
-  use ExUnit.Case, asnc: true
+  use ExUnit.Case, async: false
   doctest Yugo.Client
   import Helpers.Client
 
@@ -37,7 +37,7 @@ defmodule Yugo.ClientTest do
     receive do
       {:email, _client, msg} ->
         assert msg ==
-                 %{
+                 %Yugo.Message{
                    bcc: [],
                    body:
                      {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
@@ -78,7 +78,7 @@ defmodule Yugo.ClientTest do
     receive do
       {:email, _client, msg} ->
         assert msg ==
-                 %{
+                 %Yugo.Message{
                    bcc: [],
                    body: [
                      {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
@@ -119,7 +119,7 @@ defmodule Yugo.ClientTest do
     receive do
       {:email, _client, msg} ->
         assert msg ==
-                 %{
+                 %Yugo.Message{
                    bcc: [],
                    body: {"text/plain", %{}, "hello"},
                    cc: [{nil, "foo@bar.com"}, {"barfoo", "bar@foo.com"}, {"", "fizz@buzz.com"}],
@@ -163,7 +163,7 @@ defmodule Yugo.ClientTest do
 
     receive do
       {:email, _client, msg} ->
-        assert msg == %{
+        assert msg == %Yugo.Message{
                  bcc: [],
                  body: [
                    {"text/plain", %{"charset" => "us-ascii"},
@@ -208,7 +208,7 @@ defmodule Yugo.ClientTest do
     receive do
       {:email, _client, msg} ->
         assert msg ==
-                 %{
+                 %Yugo.Message{
                    bcc: [],
                    body: [
                      [

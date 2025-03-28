@@ -12,6 +12,7 @@ defmodule Yugo.MixProject do
       package: package(),
       name: "Yugo",
       source_url: "https://github.com/Flying-Toast/yugo",
+      compilers: [:leex, :yecc] ++ Mix.compilers(),
       docs: [
         source_ref: "master",
         main: "readme",
