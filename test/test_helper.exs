@@ -158,6 +158,40 @@ defmodule Helpers.Client do
     socket
   end
 
+  def accept_ssl_xoauth2() do
+    {:ok, listener} =
+      :ssl.listen(0,
+        packet: :line,
+        active: false,
+        mode: :binary,
+        certfile: Path.join(__DIR__, "cert.pem"),
+        keyfile: Path.join(__DIR__, "key.pem")
+      )
+
+    {:ok, {_addr, port}} = :ssl.sockname(listener)
+    name = :crypto.strong_rand_bytes(5)
+
+    opts = [
+      auth_type: :xoauth2,
+      username: "foo@example.com",
+      password: "access token 123",
+      name: name,
+      server: "localhost",
+      port: port,
+      tls: true,
+      ssl_verify: :verify_none
+    ]
+
+    start_link_supervised!({Yugo.Client, opts})
+    Yugo.subscribe(name)
+
+    {:ok, socket} = :ssl.transport_accept(listener, 1000)
+    {:ok, socket} = :ssl.handshake(socket, 1000)
+    on_exit(fn -> :ssl.close(socket) end)
+
+    socket
+  end
+
   def ssl_server() do
     accept_ssl()
     |> do_hello()

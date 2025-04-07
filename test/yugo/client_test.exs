@@ -238,4 +238,28 @@ defmodule Yugo.ClientTest do
                  }
     end
   end
+
+  test "valid XOAUTH2 authentication" do
+    accept_ssl_xoauth2()
+    |> do_hello()
+    |> assert_comms(
+      ~s"""
+      C: 1 AUTHENTICATE XOAUTH2 "dXNlcj1mb29AZXhhbXBsZS5jb20BYXV0aD1CZWFyZXIgYWNjZXNzIHRva2VuIDEyMwEB"
+      S: 0 OK foo@example.com authenticated (Success)
+      """
+    )
+  end
+
+  test "invalid XOAUTH2 authentication" do
+    accept_ssl_xoauth2()
+    |> do_hello()
+    |> assert_comms(
+      ~s"""
+      C: 1 AUTHENTICATE XOAUTH2 "dXNlcj1mb29AZXhhbXBsZS5jb20BYXV0aD1CZWFyZXIgYWNjZXNzIHRva2VuIDEyMwEB"
+      S: + eyJzdGF0dXMiOiI0MDAiLCJzY2hlbWVzIjoiQmVhcmVyIiwic2NvcGUiOiJodHRwczovL21haWwuZ29vZ2xlLmNvbS8ifQ==
+      C: 
+      S: 1 BAD Invalid SASL argument.
+      """
+    )
+  end
 end
