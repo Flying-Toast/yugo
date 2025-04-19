@@ -264,14 +264,13 @@ defmodule Yugo.ClientTest do
 
     # Wait for the result and assert
     assert Task.await(task) ==
-             {:ok,
-              [
-                "Public Folders",
-                "INBOX",
-                "Sent Items",
-                "Drafts",
-                "Trash"
-              ]}
+             [
+               "Public Folders",
+               "INBOX",
+               "Sent Items",
+               "Drafts",
+               "Trash"
+             ]
   end
 
   # todo add copy/store/expunge fallback when capabilities doesn't support move

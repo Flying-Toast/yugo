@@ -248,13 +248,6 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_info({:retry_count, from}, conn) do
-    count = conn.num_exists || 0
-    GenServer.reply(from, max(0, count))
-    {:noreply, conn}
-  end
-
-  @impl true
   def handle_continue(args, _state) do
     {:ok, socket} =
       if args[:tls] do
@@ -278,6 +271,13 @@ defmodule Yugo.Client do
       ssl_verify: args[:ssl_verify]
     }
 
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_info({:retry_count, from}, conn) do
+    count = conn.num_exists || 0
+    GenServer.reply(from, max(0, count))
     {:noreply, conn}
   end
 
