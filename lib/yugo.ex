@@ -53,7 +53,8 @@ defmodule Yugo do
           from: [address],
           subject: nil | String.t(),
           to: [address],
-          seqnum: integer()
+          seqnum: integer(),
+          uid: integer()
         }
 
   @doc """
@@ -171,7 +172,7 @@ defmodule Yugo do
   ## Parameters
 
     * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
-    * `sequence_set` - A string representing the sequence set of messages to move.
+    * `uids` - A string representing the UIDs of messages to move.
     * `destination` - The name of the destination mailbox.
     * `return_uids` - (Optional) A boolean indicating whether to return the UIDs of the moved messages. Defaults to `false`.
 
@@ -192,14 +193,14 @@ defmodule Yugo do
   """
   @spec move(
           Client.name(),
-          sequence_set :: String.t(),
+          uids :: String.t(),
           destination :: String.t(),
           return_uids :: boolean()
         ) :: :ok | {:ok, {[integer()], [integer()]}} | {:error, String.t()}
-  def move(client_name, sequence_set, destination, return_uids \\ false) do
+  def move(client_name, uids, destination, return_uids \\ false) do
     GenServer.call(
       {:via, Registry, {Yugo.Registry, client_name}},
-      {:move, sequence_set, destination, return_uids}
+      {:move, uids, destination, return_uids}
     )
   end
 

@@ -207,7 +207,7 @@ defmodule Yugo.Client do
   end
 
   defp send_move_command(conn, sequence_set, destination, return_uids, from) do
-    cmd = "MOVE #{sequence_set} #{quote_string(destination)}"
+    cmd = "UID MOVE #{sequence_set} #{quote_string(destination)}"
     send_command(conn, cmd, &on_move_response(&1, &2, &3, return_uids, from))
   end
 
@@ -586,6 +586,7 @@ defmodule Yugo.Client do
     |> Map.drop([:fetched, :body_structure, :envelope])
     |> Map.put(:body, normalize_structure(msg.body, msg.body_structure))
     |> Map.put(:seqnum, seqnum)
+    |> Map.put(:uid, msg[:uid])
   end
 
   defp normalize_structure(msg_body, msg_structure) do
@@ -629,7 +630,7 @@ defmodule Yugo.Client do
 
   defp fetch_message_parts(conn, seqnum) do
     parts_to_fetch =
-      [flags: "FLAGS", envelope: "ENVELOPE"]
+      [flags: "FLAGS", envelope: "ENVELOPE", uid: "UID"]
       |> Enum.reject(fn {key, _} -> Map.has_key?(conn.unprocessed_messages[seqnum], key) end)
       |> Enum.map(&elem(&1, 1))
 
@@ -801,8 +802,13 @@ defmodule Yugo.Client do
           conn
         end
 
-      {:fetch, {_seq_num, :uid, _uid}} ->
-        conn
+      {:fetch, {seq_num, :uid, uid}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :uid], uid)
+        else
+          conn
+        end
 
       {:list, %{flags: flags, delimiter: delimiter, name: name}} ->
         list_item = %{flags: flags, delimiter: delimiter, name: name}
