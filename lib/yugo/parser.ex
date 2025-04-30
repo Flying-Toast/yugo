@@ -120,6 +120,18 @@ defmodule Yugo.Parser do
         num = String.to_integer(num)
         [uid_next: num]
 
+      Regex.match?(~r/^\[COPYUID /i, resp) ->
+        [validity, source_uids, destination_uids] =
+          Regex.run(~r/^\[COPYUID (\d+) (\S+) (\S+)\]/i, resp, capture: :all_but_first)
+
+        [
+          copyuid: %{
+            validity: String.to_integer(validity),
+            source_uids: parse_uid_set(source_uids),
+            destination_uids: parse_uid_set(destination_uids)
+          }
+        ]
+
       true ->
         []
     end
@@ -165,9 +177,39 @@ defmodule Yugo.Parser do
         parse_msg_atts(fetchdata)
         |> Enum.map(fn {attr, value} -> {:fetch, {seqnum, attr, value}} end)
 
+      Regex.match?(~r/^COPYUID /i, resp) ->
+        [validity, source_uids, destination_uids] =
+          Regex.run(~r/^COPYUID (\d+) (\S+) (\S+)$/i, resp, capture: :all_but_first)
+
+        [
+          copyuid: %{
+            validity: String.to_integer(validity),
+            source_uids: parse_uid_set(source_uids),
+            destination_uids: parse_uid_set(destination_uids)
+          }
+        ]
+
+      Regex.match?(~r/^LIST /i, resp) ->
+        [flags, delimiter, name] = parse_list_response(resp)
+        [list: %{flags: flags, delimiter: delimiter, name: name}]
+
       true ->
         []
     end
+  end
+
+  defp parse_list_response(resp) do
+    [_, flags, delimiter, name] = Regex.run(~r/^LIST \((.*?)\) (.*?) (.*)$/i, resp)
+
+    flags =
+      flags
+      |> String.split(" ")
+      |> Enum.map(&String.to_atom/1)
+
+    delimiter = if delimiter == "NIL", do: nil, else: String.trim(delimiter, "\"")
+    name = String.trim(name, "\"")
+
+    [flags, delimiter, name]
   end
 
   defp parse_msg_atts(rest), do: parse_msg_atts_aux(rest, [])
@@ -287,7 +329,14 @@ defmodule Yugo.Parser do
     {[name, _adl, mailbox, host], rest} =
       parse_list(rest, [&parse_nstring/1, &parse_nstring/1, &parse_nstring/1, &parse_nstring/1])
 
-    {{name, "#{String.downcase(mailbox)}@#{String.downcase(host)}"}, rest}
+    email =
+      case {mailbox, host} do
+        {nil, _} -> nil
+        {_, nil} -> nil
+        {m, h} -> "#{String.downcase(m)}@#{String.downcase(h)}"
+      end
+
+    {{name, email}, rest}
   end
 
   defp parse_address_list(rest) do
@@ -434,5 +483,26 @@ defmodule Yugo.Parser do
     }
 
     {{:body, {:onepart, body}}, rest}
+  end
+
+  def parse_move_uids(response) do
+    case Regex.run(~r/\[COPYUID \d+ (\S+) (\S+)\]/i, response) do
+      [_, source_uids, destination_uids] ->
+        {:ok, {parse_uid_set(source_uids), parse_uid_set(destination_uids)}}
+
+      nil ->
+        :ok
+    end
+  end
+
+  def parse_uid_set(uid_set) do
+    uid_set
+    |> String.split(",")
+    |> Enum.flat_map(fn range ->
+      case String.split(range, ":") do
+        [single] -> [String.to_integer(single)]
+        [start, stop] -> Enum.to_list(String.to_integer(start)..String.to_integer(stop))
+      end
+    end)
   end
 end

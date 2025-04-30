@@ -142,6 +142,112 @@ defmodule Yugo.Client do
   end
 
   @impl true
+  def handle_cast({:fetch, sequence_set}, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> queue_fetch_messages(sequence_set)
+      |> maybe_idle()
+
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_call({:capabilities}, _from, conn) do
+    {:reply, conn.capabilities, conn}
+  end
+
+  @impl true
+  def handle_call(:count, from, conn) do
+    if conn.num_exists == nil do
+      Process.send_after(self(), {:retry_count, from}, 1000)
+      {:noreply, conn}
+    else
+      {:reply, max(0, conn.num_exists), conn}
+    end
+  end
+
+  @impl true
+  def handle_call({:move, sequence_set, destination, return_uids}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_move_command(sequence_set, destination, return_uids, from)
+
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_call({:create, mailbox_name}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_create_command(mailbox_name, from)
+
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_call({:list, reference, mailbox}, from, conn) do
+    conn =
+      conn
+      |> cancel_idle()
+      |> send_command(
+        "LIST #{quote_string(reference)} #{quote_string(mailbox)}",
+        &on_list_response(&1, &2, &3, from)
+      )
+
+    {:noreply, conn}
+  end
+
+  defp on_list_response(conn, :ok, response, from) do
+    mailbox_names = Enum.map(response, fn %{name: name} -> name end)
+    GenServer.reply(from, mailbox_names)
+    maybe_idle(conn)
+  end
+
+  defp send_move_command(conn, sequence_set, destination, return_uids, from) do
+    cmd = "UID MOVE #{sequence_set} #{quote_string(destination)}"
+    send_command(conn, cmd, &on_move_response(&1, &2, &3, return_uids, from))
+  end
+
+  defp on_move_response(conn, :ok, response, return_uids, from) do
+    result = if return_uids, do: Parser.parse_move_uids(response), else: :ok
+    GenServer.reply(from, result)
+    maybe_idle(conn)
+  end
+
+  defp send_create_command(conn, mailbox_name, from) do
+    cmd = "CREATE #{quote_string(mailbox_name)}"
+    send_command(conn, cmd, &on_create_response(&1, &2, &3, from))
+  end
+
+  defp on_create_response(conn, :ok, _text, from) do
+    GenServer.reply(from, :ok)
+    maybe_idle(conn)
+  end
+
+  defp on_create_response(conn, :no, text, from) do
+    GenServer.reply(from, {:error, text})
+    maybe_idle(conn)
+  end
+
+  defp queue_fetch_messages(conn, sequence_set) do
+    seqnums = Parser.parse_uid_set(sequence_set)
+
+    new_messages =
+      seqnums
+      |> Enum.reject(&Map.has_key?(conn.unprocessed_messages, &1))
+      |> Map.new(&{&1, %{fetched: nil}})
+
+    %{
+      conn
+      | unprocessed_messages: Map.merge(conn.unprocessed_messages, new_messages),
+        fetch_queue: conn.fetch_queue ++ seqnums
+    }
+  end
+
+  @impl true
   def handle_continue(args, _state) do
     {:ok, socket} =
       if args[:tls] do
@@ -165,6 +271,13 @@ defmodule Yugo.Client do
       ssl_verify: args[:ssl_verify]
     }
 
+    {:noreply, conn}
+  end
+
+  @impl true
+  def handle_info({:retry_count, from}, conn) do
+    count = conn.num_exists || 0
+    GenServer.reply(from, max(0, count))
     {:noreply, conn}
   end
 
@@ -360,70 +473,75 @@ defmodule Yugo.Client do
   defp maybe_idle(conn) do
     if "IDLE" in conn.capabilities and not command_in_progress?(conn) and not conn.idling do
       timer = Process.send_after(self(), :idle_timeout, @idle_timeout)
-
-      %{conn | idling: true, idle_timer: timer, idle_timed_out: false}
-      |> send_command("IDLE", &on_idle_response/3)
+      conn = %{conn | idling: true, idle_timer: timer, idle_timed_out: false}
+      send_command(conn, "IDLE", &on_idle_response/3)
     else
       conn
     end
   end
 
   defp cancel_idle(conn) do
-    Process.cancel_timer(conn.idle_timer)
-
-    %{conn | idling: false, idle_timer: nil}
-    |> send_raw("DONE\r\n")
-  end
-
-  defp maybe_process_messages(conn) do
-    if command_in_progress?(conn) or conn.unprocessed_messages == %{} or conn.state != :selected do
-      conn
+    if conn.idling do
+      Process.cancel_timer(conn.idle_timer)
+      send_raw(conn, "DONE\r\n")
+      %{conn | idling: false, idle_timer: nil}
     else
-      process_earliest_message(conn)
+      conn
     end
   end
 
-  defp process_earliest_message(conn) do
-    {seqnum, msg} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+  defp maybe_process_messages(conn) do
+    if command_in_progress?(conn) or conn.state != :selected do
+      conn
+    else
+      process_next_message(conn)
+    end
+  end
 
+  defp process_next_message(conn) do
     cond do
-      not Map.has_key?(msg, :fetched) ->
+      conn.fetch_queue != [] ->
+        [seqnum | rest] = conn.fetch_queue
+        conn = %{conn | fetch_queue: rest}
+        process_message(conn, seqnum)
+
+      conn.unprocessed_messages != %{} ->
+        {seqnum, _} = Enum.min_by(conn.unprocessed_messages, fn {k, _v} -> k end)
+        process_message(conn, seqnum)
+
+      true ->
+        conn
+    end
+  end
+
+  defp process_message(conn, seqnum) do
+    msg = Map.get(conn.unprocessed_messages, seqnum, %{})
+
+    case msg do
+      %{fetched: nil} ->
         conn
         |> fetch_message(seqnum)
         |> maybe_process_messages()
 
-      msg.fetched == :filter ->
-        parts_to_fetch =
-          [flags: "FLAGS", envelope: "ENVELOPE"]
-          |> Enum.reject(fn {key, _} -> Map.has_key?(msg, key) end)
-          |> Enum.map(&elem(&1, 1))
-
-        parts_to_fetch = ["BODY" | parts_to_fetch]
-
-        conn =
-          conn
-          |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
-
-        unless Enum.empty?(parts_to_fetch) do
-          conn
-          |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
-        else
-          conn
-        end
-
-      msg.fetched == :pre_body ->
-        body_parts =
-          body_part_paths(msg.body_structure)
-          |> Enum.map(&"BODY.PEEK[#{&1}]")
-
+      %{fetched: :filter} ->
         conn
-        |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
-          put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
-        end)
+        |> fetch_message_parts(seqnum)
+        |> maybe_process_messages()
 
-      msg.fetched == :full ->
+      %{fetched: :pre_body} ->
+        conn
+        |> fetch_message_body(seqnum)
+        |> maybe_process_messages()
+
+      %{fetched: :full} ->
         conn
         |> release_message(seqnum)
+        |> maybe_process_messages()
+
+      _ ->
+        conn
+        |> fetch_message(seqnum)
+        |> maybe_process_messages()
     end
   end
 
@@ -454,7 +572,7 @@ defmodule Yugo.Client do
 
     for {filter, pid} <- conn.filters do
       if Filter.accepts?(filter, msg) do
-        send(pid, {:email, conn.my_name, package_message(msg)})
+        send(pid, {:email, conn.my_name, package_message(msg, seqnum)})
       end
     end
 
@@ -462,11 +580,13 @@ defmodule Yugo.Client do
   end
 
   # Preprocesses/cleans the message before it is sent to a subscriber
-  defp package_message(msg) do
+  defp package_message(msg, seqnum) do
     msg
     |> Map.merge(msg.envelope)
     |> Map.drop([:fetched, :body_structure, :envelope])
     |> Map.put(:body, normalize_structure(msg.body, msg.body_structure))
+    |> Map.put(:seqnum, seqnum)
+    |> Map.put(:uid, msg[:uid])
   end
 
   defp normalize_structure(msg_body, msg_structure) do
@@ -508,18 +628,74 @@ defmodule Yugo.Client do
     end
   end
 
+  defp fetch_message_parts(conn, seqnum) do
+    parts_to_fetch =
+      [flags: "FLAGS", envelope: "ENVELOPE", uid: "UID"]
+      |> Enum.reject(fn {key, _} -> Map.has_key?(conn.unprocessed_messages[seqnum], key) end)
+      |> Enum.map(&elem(&1, 1))
+
+    parts_to_fetch = ["BODY"] ++ parts_to_fetch
+
+    conn =
+      conn
+      |> put_in([Access.key!(:unprocessed_messages), seqnum, :fetched], :pre_body)
+
+    unless Enum.empty?(parts_to_fetch) do
+      conn
+      |> send_command("FETCH #{seqnum} (#{Enum.join(parts_to_fetch, " ")})")
+    else
+      conn
+    end
+  end
+
+  defp fetch_message_body(conn, seqnum) do
+    msg = Map.get(conn.unprocessed_messages, seqnum)
+
+    body_parts =
+      body_part_paths(msg.body_structure)
+      |> Enum.map(&"BODY.PEEK[#{&1}]")
+
+    conn
+    |> send_command("FETCH #{seqnum} (#{Enum.join(body_parts, " ")})", fn conn, :ok, _text ->
+      put_in(conn, [Access.key!(:unprocessed_messages), seqnum, :fetched], :full)
+    end)
+  end
+
   defp apply_action(conn, action) do
     case action do
       {:capabilities, caps} ->
         %{conn | capabilities: caps}
 
       {:tagged_response, {tag, status, text}} when status == :ok ->
-        {%{on_response: resp_fn}, conn} = pop_in(conn, [Access.key!(:tag_map), tag])
+        {%{on_response: resp_fn, command: command}, conn} =
+          pop_in(conn, [Access.key!(:tag_map), tag])
 
-        resp_fn.(conn, status, text)
+        if String.contains?(command, "LIST") do
+          full_response = Enum.reverse(conn.list_response_acc)
+          conn = %{conn | list_response_acc: []}
+          resp_fn.(conn, status, full_response)
+        else
+          resp_fn.(conn, status, text)
+        end
 
       {:tagged_response, {tag, status, text}} when status in [:bad, :no] ->
-        raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+        case {status, text} do
+          {:bad, text} ->
+            if String.contains?(text, "Expected DONE") do
+              # This is likely due to an IDLE command being interrupted
+              %{conn | idling: false, idle_timer: nil}
+            else
+              raise "Got `BAD` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+            end
+
+          {:no, text} ->
+            if String.contains?(text, "[ALREADYEXISTS] Mailbox already exists") do
+              {%{on_response: resp_fn}, conn} = pop_in(conn, [Access.key!(:tag_map), tag])
+              resp_fn.(conn, status, text)
+            else
+              raise "Got `NO` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
+            end
+        end
 
       :continuation ->
         conn
@@ -626,7 +802,21 @@ defmodule Yugo.Client do
           conn
         end
 
-      {:fetch, {_seq_num, :uid, _uid}} ->
+      {:fetch, {seq_num, :uid, uid}} ->
+        if Map.has_key?(conn.unprocessed_messages, seq_num) do
+          conn
+          |> put_in([Access.key!(:unprocessed_messages), seq_num, :uid], uid)
+        else
+          conn
+        end
+
+      {:list, %{flags: flags, delimiter: delimiter, name: name}} ->
+        list_item = %{flags: flags, delimiter: delimiter, name: name}
+        %{conn | list_response_acc: [list_item | conn.list_response_acc]}
+
+      {:copyuid,
+       %{validity: _validity, source_uids: _source_uids, destination_uids: _destination_uids}} ->
+        # might need to save these both off for return to the user, just getting MOVE working first
         conn
     end
   end

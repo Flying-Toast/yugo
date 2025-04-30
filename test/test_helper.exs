@@ -125,7 +125,7 @@ defmodule Helpers.Client do
     socket
   end
 
-  defp accept_ssl() do
+  defp accept_ssl(name \\ nil) do
     {:ok, listener} =
       :ssl.listen(0,
         packet: :line,
@@ -136,7 +136,7 @@ defmodule Helpers.Client do
       )
 
     {:ok, {_addr, port}} = :ssl.sockname(listener)
-    name = :crypto.strong_rand_bytes(5)
+    name = name || :crypto.strong_rand_bytes(5)
 
     opts = [
       username: "foo@example.com",
@@ -158,8 +158,8 @@ defmodule Helpers.Client do
     socket
   end
 
-  def ssl_server() do
-    accept_ssl()
+  def ssl_server(name \\ nil) do
+    accept_ssl(name)
     |> do_hello()
     |> do_select_bootstrap()
   end

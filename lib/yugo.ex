@@ -52,7 +52,9 @@ defmodule Yugo do
           sender: [address],
           from: [address],
           subject: nil | String.t(),
-          to: [address]
+          to: [address],
+          seqnum: integer(),
+          uid: integer()
         }
 
   @doc """
@@ -80,5 +82,203 @@ defmodule Yugo do
   @spec unsubscribe(Client.name()) :: :ok
   def unsubscribe(client_name) do
     GenServer.cast({:via, Registry, {Yugo.Registry, client_name}}, {:unsubscribe, self()})
+  end
+
+  @doc """
+  Lists mailboxes matching the given reference and mailbox pattern.
+
+  This function sends a LIST command to the IMAP server and returns the names of
+  the mailboxes that match the given reference and mailbox pattern.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `reference` - The reference name, typically an empty string. Defaults to "".
+    * `mailbox` - The mailbox name with possible wildcards. Defaults to "%", which matches all mailboxes.
+
+  ## Returns
+
+  A list of mailbox names.
+
+  ## Example
+
+      iex> Yugo.list(:my_client)
+      ["INBOX", "Sent", "Drafts"]
+
+  """
+  @spec list(Client.name(), reference :: String.t(), mailbox :: String.t()) :: [String.t()]
+  def list(client_name, reference \\ "", mailbox \\ "%") do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:list, reference, mailbox})
+  end
+
+  @doc """
+  Retrieves the capabilities of the IMAP server.
+
+  This function sends a CAPABILITY command to the IMAP server and returns a list
+  of capabilities supported by the server.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+
+  ## Returns
+
+  A list of capability strings.
+
+  ## Example
+
+      iex> Yugo.capabilities(:my_client)
+      ["IMAP4rev1", "STARTTLS", "AUTH=PLAIN", "LOGINDISABLED"]
+
+  """
+  @spec capabilities(Client.name()) :: [String.t()]
+  def capabilities(client_name) do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, {:capabilities})
+  end
+
+  @doc """
+  Checks if the IMAP server supports a specific capability.
+
+  This function uses the `capabilities/1` function to retrieve the server's capabilities
+  and checks if the specified capability is present in the list.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `capability` - The capability string to check for.
+
+  ## Returns
+
+  A boolean indicating whether the server supports the specified capability.
+
+  ## Example
+
+      iex> Yugo.has_capability?(:my_client, "IMAP4rev1")
+      true
+
+  """
+  @spec has_capability?(Client.name(), String.t()) :: boolean()
+  def has_capability?(client_name, capability) do
+    capabilities(client_name)
+    |> Enum.any?(fn cap -> cap == capability end)
+  end
+
+  @doc """
+  Moves messages from the current mailbox to another mailbox.
+
+  This function sends a MOVE command to the IMAP server to move messages from the current
+  mailbox to the specified destination mailbox.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `uids` - A string representing the UIDs of messages to move.
+    * `destination` - The name of the destination mailbox.
+    * `return_uids` - (Optional) A boolean indicating whether to return the UIDs of the moved messages. Defaults to `false`.
+
+  ## Returns
+
+    * `:ok` if `return_uids` is `false`.
+    * `{:ok, {[source_uids], [destination_uids]}}` if `return_uids` is `true`, where `source_uids` are the UIDs of the messages in the source mailbox, and `destination_uids` are the corresponding UIDs in the destination mailbox.
+    * `{:error, reason}` if the operation fails.
+
+  ## Example
+
+      iex> Yugo.move(:my_client, "1:3", "Archive")
+      :ok
+
+      iex> Yugo.move(:my_client, "1:3", "Archive", true)
+      {:ok, {[1, 2, 3], [101, 102, 103]}}
+
+  """
+  @spec move(
+          Client.name(),
+          uids :: String.t(),
+          destination :: String.t(),
+          return_uids :: boolean()
+        ) :: :ok | {:ok, {[integer()], [integer()]}} | {:error, String.t()}
+  def move(client_name, uids, destination, return_uids \\ false) do
+    GenServer.call(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:move, uids, destination, return_uids}
+    )
+  end
+
+  @doc """
+    Creates a new mailbox (aka folder) with the given name.
+
+    ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `mailbox_name` - The name of the mailbox (aka folder) to create. Nested folders can be created by using a "/" delimiter.
+
+    ## Returns
+
+    * `:ok` if the mailbox was created successfully.
+    * `{:error, reason}` if the operation fails.
+
+    ## Example
+
+      iex> Yugo.create(:my_client, "Work/Projects")
+      :ok
+
+  """
+  @spec create(Client.name(), String.t()) :: :ok | {:error, String.t()}
+  def create(client_name, mailbox_name) do
+    GenServer.call(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:create, mailbox_name}
+    )
+  end
+
+  @doc """
+  Fetches prior messages based on the given sequence set.
+
+  This function sends a request to fetch messages asynchronously. The fetched messages
+  will be delivered to subscribers just like new messages.
+
+  ## Parameters
+
+    * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+    * `sequence_set` - A string representing the sequence set of messages to fetch.
+
+  ## Returns
+
+    * `:ok` immediately, as the operation is asynchronous.
+
+  ## Example
+
+      iex> Yugo.fetch(:my_client, "1:10")
+      :ok
+
+  """
+  @spec fetch(Client.name(), String.t()) :: :ok
+  def fetch(client_name, sequence_set) do
+    GenServer.cast(
+      {:via, Registry, {Yugo.Registry, client_name}},
+      {:fetch, sequence_set}
+    )
+  end
+
+  @doc """
+  Retrieves the number of messages in the currently selected mailbox.
+
+  ## Parameters
+
+  * `client_name` - The name of the [`Client`](`Yugo.Client`) to use.
+
+  ## Returns
+
+  An integer representing the number of messages in the mailbox.
+
+  ## Example
+
+    iex> Yugo.count(:my_client)
+    42
+
+  """
+  @spec count(Client.name()) :: non_neg_integer()
+  def count(client_name) do
+    GenServer.call({:via, Registry, {Yugo.Registry, client_name}}, :count)
   end
 end

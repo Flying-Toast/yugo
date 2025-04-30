@@ -24,7 +24,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
     S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1])
@@ -51,7 +51,9 @@ defmodule Yugo.ClientTest do
                    sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2,
+                   uid: nil
                  }
     end
   end
@@ -62,7 +64,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
     S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 34 4)("text" "x-elixir" ("charset" "us-ascii") NIL NIL "base64" 78 1) "mixed") ENVELOPE ("Wed, 07 Dec 2022 23:21:35 -0500" "Foo Bar Baz Buzz Biz Boz" (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) (("Bob Jones" NIL "bobjones" "example.org")) ((NIL NIL "foo" "bar.com")) NIL NIL NIL "Fjaewlk jflkewajf i3ajf0943aF $#AF $#FA#$ F#AF {123}"))
     S: 5 oK done
     C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
@@ -95,7 +97,9 @@ defmodule Yugo.ClientTest do
                    sender: [{"Bob Jones", "bobjones@example.org"}],
                    subject: "Foo Bar Baz Buzz Biz Boz",
                    to: [{nil, "foo@bar.com"}],
-                   from: [{"Bob Jones", "bobjones@example.org"}]
+                   from: [{"Bob Jones", "bobjones@example.org"}],
+                   seqnum: 2,
+                   uid: nil
                  }
     end
   end
@@ -106,7 +110,7 @@ defmodule Yugo.ClientTest do
     S: * 2 EXISTS
     C: DONE
     S: 4 OK idle done
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
     S: * 2 FETCH (FLAGS () BODY ("text" "plain" () NIL NIL "7bit" 5 1) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" "Hello! (subject)" (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")(NIL NIL "bob" "bobs-email.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) ((NIL NIL "foo" "bar.com")("barfoo" NIL "bar" "foo.com")({0}
     S: NIL "fizz" "buzz.com")) NIL "123 abc 456" {0}
     S: ))
@@ -134,7 +138,9 @@ defmodule Yugo.ClientTest do
                    ],
                    subject: "Hello! (subject)",
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2,
+                   uid: nil
                  }
     end
   end
@@ -145,7 +151,7 @@ defmodule Yugo.ClientTest do
     S: * 2 exists
     C: DONE
     S: 4 ok * * * ok ok ok ok
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
     S: * 2 FETCH (FLAGS (\Recent) BODY (("text" "plain" ("charset" "us-ascii") NIL NIL "7bit" 42 4)("text" "html" ("charset" "us-ascii") NIL NIL "7bit" 206 0) "alternative") ENVELOPE ("Thu, 08 Dec 2022 09:59:48 -0500" "An HTML email" (("Aych T. Emmel" NIL "person" "domain.com")) ((NIL NIL "person" "domain.com")) ((NIL NIL "foo" "bar.com")) ((NIL NIL "bar" "foo.com")) NIL NIL NIL "<><><><><>"))
     S: 5 OK Fetch completed (0.001 + 0.000 secs).
     C: 6 FETCH 2 (BODY.PEEK[1] BODY.PEEK[2])
@@ -180,7 +186,9 @@ defmodule Yugo.ClientTest do
                  sender: [{nil, "person@domain.com"}],
                  subject: "An HTML email",
                  to: [{nil, "bar@foo.com"}],
-                 from: [{"Aych T. Emmel", "person@domain.com"}]
+                 from: [{"Aych T. Emmel", "person@domain.com"}],
+                 seqnum: 2,
+                 uid: nil
                }
     end
   end
@@ -196,7 +204,7 @@ defmodule Yugo.ClientTest do
     S: * 2 exists
     C: DONE
     S: 4 ok * * * ok ok ok ok
-    C: 5 FETCH 2 (BODY FLAGS ENVELOPE)
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
     S: * 2 FETCH (uid 123 FLAGS () BODY #{body_structure} ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL nil niL))
     S: 5 OK OK OK
     C: 6 FETCH 2 (BODY.PEEK[1.1] BODY.PEEK[1.2] BODY.PEEK[1.3.1] BODY.PEEK[1.3.2] BODY.PEEK[2.1] BODY.PEEK[2.2] BODY.PEEK[3])
@@ -234,8 +242,226 @@ defmodule Yugo.ClientTest do
                    sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
                    subject: nil,
                    to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
-                   from: [{"Marge Simpson", "marge@simpsons-family.com"}]
+                   from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                   seqnum: 2,
+                   uid: 123
                  }
     end
+  end
+
+  test "list mailboxes" do
+    socket = ssl_server(:test_list)
+
+    # Start the list operation
+    task = Task.async(fn -> Yugo.list(:test_list, "", "%") end)
+
+    # Simulate LIST command and response
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 LIST "" "%"
+    S: * LIST (\Noselect) "/" "Public Folders"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "INBOX"
+    S: * LIST (\Unmarked \HasChildren) "/" "Sent Items"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "Drafts"
+    S: * LIST (\Unmarked \HasNoChildren) "/" "Trash"
+    S: 5 OK LIST completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) ==
+             [
+               "Public Folders",
+               "INBOX",
+               "Sent Items",
+               "Drafts",
+               "Trash"
+             ]
+  end
+
+  # todo add copy/store/expunge fallback when capabilities doesn't support move
+
+  test "move messages without returning UIDs" do
+    socket = ssl_server(:test_move_no_uids)
+
+    # Start the move operation without returning UIDs
+    task = Task.async(fn -> Yugo.move(:test_move_no_uids, "1:3", "Archive", false) end)
+
+    # Simulate MOVE command and response
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 UID MOVE 1:3 "Archive"
+    S: 5 OK MOVE completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == :ok
+  end
+
+  test "create mailbox" do
+    socket = ssl_server(:test_create)
+
+    # Start the create operation
+    task = Task.async(fn -> Yugo.create(:test_create, "New Folder") end)
+
+    # Simulate CREATE command and response for success case
+    assert_comms(socket, ~S"""
+    C: DONE
+    C: 5 CREATE "New Folder"
+    S: 5 OK CREATE completed
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == :ok
+
+    # Test failure case
+    task = Task.async(fn -> Yugo.create(:test_create, "Existing Folder") end)
+
+    # Simulate CREATE command and response for failure case
+    assert_comms(socket, ~S"""
+    C: 6 CREATE "Existing Folder"
+    S: 6 NO [ALREADYEXISTS] Mailbox already exists
+    """)
+
+    # Wait for the result and assert
+    assert Task.await(task) == {:error, "[ALREADYEXISTS] Mailbox already exists"}
+  end
+
+  test "fetch prior message" do
+    socket = ssl_server(:test_fetch)
+
+    # Start the fetch operation for a prior message
+    Yugo.fetch(:test_fetch, "2")
+
+    # Simulate FETCH command and response for the prior message
+    assert_comms(socket, ~S"""
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 oK done
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 fetcH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 ok fetched
+    """)
+
+    # Ensure the fetched prior message is received
+    assert_receive {:email, :test_fetch, prior_msg}, 10000
+
+    # Assert the contents of the prior message
+    assert prior_msg ==
+             %{
+               bcc: [],
+               body:
+                 {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
+                  "Hello 123\r\n456"},
+               cc: [],
+               date: ~U[2022-12-07 13:02:41Z],
+               flags: [:seen],
+               in_reply_to: nil,
+               message_id: "fjaelwkjfi oaf<$ ))) \"",
+               reply_to: [{"Marge", "marge@simpsons-family.com"}],
+               sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
+               subject: nil,
+               to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+               from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+               seqnum: 2,
+               uid: nil
+             }
+  end
+
+  test "fetch multiple prior messages" do
+    socket = ssl_server(:test_fetch_multiple)
+
+    # Start the fetch operation for multiple messages
+    Yugo.fetch(:test_fetch_multiple, "2:4")
+
+    # Simulate FETCH commands and responses for individual messages
+    assert_comms(socket, ~S"""
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 OK Fetch completed
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 OK Fetch completed
+    C: 7 FETCH 3 (BODY FLAGS ENVELOPE UID)
+    S: * 3 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 7 OK Fetch completed
+    C: 8 FETCH 3 (BODY.PEEK[1])
+    S: * 3 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 8 OK Fetch completed
+    C: 9 FETCH 4 (BODY FLAGS ENVELOPE UID)
+    S: * 4 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 9 OK Fetch completed
+    C: 10 FETCH 4 (BODY.PEEK[1])
+    S: * 4 FETCH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 10 OK Fetch completed
+    """)
+
+    # Ensure the fetched messages are received
+    assert_receive {:email, :test_fetch_multiple, msg1}, 10000
+    assert_receive {:email, :test_fetch_multiple, msg2}, 10000
+    assert_receive {:email, :test_fetch_multiple, msg3}, 10000
+
+    # Assert the contents of each message
+    Enum.each([msg1, msg2, msg3], fn msg ->
+      assert msg ==
+               %{
+                 bcc: [],
+                 body:
+                   {"text/plain", %{"charset" => "us-ascii", "format" => "flowed"},
+                    "Hello 123\r\n456"},
+                 cc: [],
+                 date: ~U[2022-12-07 13:02:41Z],
+                 flags: [:seen],
+                 in_reply_to: nil,
+                 message_id: "fjaelwkjfi oaf<$ ))) \"",
+                 reply_to: [{"Marge", "marge@simpsons-family.com"}],
+                 sender: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                 subject: nil,
+                 to: [{"HOMIEEEE", "homer@simpsons-family.com"}],
+                 from: [{"Marge Simpson", "marge@simpsons-family.com"}],
+                 seqnum: msg.seqnum,
+                 uid: nil
+               }
+    end)
+
+    # Assert that the seqnums are correct
+    assert msg1.seqnum == 2
+    assert msg2.seqnum == 3
+    assert msg3.seqnum == 4
+  end
+
+  test "retrieves message count" do
+    socket = ssl_server(:test_count)
+    # Check the default count is returned
+    assert Yugo.count(:test_count) == 1
+
+    # Fake a second message
+    assert_comms(socket, ~S"""
+    S: * 2 EXISTS
+    C: DONE
+    S: 4 OK idle done
+    C: 5 FETCH 2 (BODY FLAGS ENVELOPE UID)
+    S: * 2 FETCH (FLAGS (\sEEn) BODY ("text" "plain" ("charset" "us-ascii" "format" "flowed") NIL NIL "7bit" 47 6) ENVELOPE ("Wed, 07 Dec 2022 18:02:41 -0500" NIL (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge Simpson" NIL "marge" "simpsons-family.com")) (("Marge" NIL "marge" "simpsons-family.com")) (("HOMIEEEE" NIL "homer" "simpsons-family.com")) NIL NIL NIL "fjaelwkjfi oaf<$ ))) \""))
+    S: 5 oK done
+    C: 6 FETCH 2 (BODY.PEEK[1])
+    S: * 2 fetcH (BODY[1] {14}
+    Hello 123
+    456)
+    S: 6 ok fetched
+    """)
+
+    # Check the count is updated
+    assert Yugo.count(:test_count) == 2
   end
 end
