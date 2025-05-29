@@ -372,9 +372,15 @@ defmodule Yugo.Parser do
         String.to_integer(parts["second"] || 0)
       )
 
+    offset_sign =
+      case parts["offset_sign"] do
+        "-" -> "+"
+        "+" -> "-"
+      end
+
     DateTime.new!(date, time)
-    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_hours"]), :hour)
-    |> DateTime.add(String.to_integer(parts["offset_sign"] <> parts["offset_minutes"]), :minute)
+    |> DateTime.add(String.to_integer(offset_sign <> parts["offset_hours"]), :hour)
+    |> DateTime.add(String.to_integer(offset_sign <> parts["offset_minutes"]), :minute)
   end
 
   defp parse_body(<<"((", _::binary>> = rest) do
