@@ -166,7 +166,11 @@ defmodule Yugo.Client do
       ssl_verify: args[:ssl_verify]
     }
 
-    :ssl.setopts(socket, active: :once)
+    if args[:tls] do
+      :ssl.setopts(socket, active: :once)
+    else
+      :inet.setopts(socket, active: :once)
+    end
 
     {:noreply, conn}
   end
