@@ -102,7 +102,7 @@ defmodule Yugo.Client do
     GenServer.start_link(__MODULE__, args, name: name)
   end
 
-  @common_connect_opts [packet: :line, active: :once, mode: :binary]
+  @common_connect_opts [packet: :line,mode: :binary]
 
   defp ssl_opts(server, ssl_verify),
     do:
@@ -167,6 +167,12 @@ defmodule Yugo.Client do
       end
 
     conn = %{conn | socket: socket}
+
+    if conn.tls do
+      :ssl.setopts(socket, active: :once)
+    else
+      :inet.setopts(socket, active: :once)
+    end
 
     {:noreply, conn}
   end
