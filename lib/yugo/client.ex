@@ -114,7 +114,19 @@ defmodule Yugo.Client do
 
   @impl true
   def init(args) do
-    {:ok, nil, {:continue, args}}
+    conn = %Conn{
+      my_name: args[:name],
+      tls: args[:tls],
+      server: args[:server],
+      username: args[:username],
+      password: args[:password],
+      mailbox: args[:mailbox],
+      ssl_verify: args[:ssl_verify],
+      next_cmd_tag: 1,
+      tag_map: %{},
+      socket: nil
+    }
+    {:ok, conn, {:continue, args}}
   end
 
   @impl true
@@ -142,7 +154,7 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_continue(args, _state) do
+  def handle_continue(args, conn) do
     {:ok, socket} =
       if args[:tls] do
         :ssl.connect(
@@ -154,16 +166,7 @@ defmodule Yugo.Client do
         :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
       end
 
-    conn = %Conn{
-      my_name: args[:name],
-      tls: args[:tls],
-      socket: socket,
-      server: args[:server],
-      username: args[:username],
-      password: args[:password],
-      mailbox: args[:mailbox],
-      ssl_verify: args[:ssl_verify]
-    }
+    conn = %{conn | socket: socket}
 
     {:noreply, conn}
   end
