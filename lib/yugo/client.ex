@@ -102,7 +102,7 @@ defmodule Yugo.Client do
     GenServer.start_link(__MODULE__, args, name: name)
   end
 
-  @common_connect_opts [packet: :line,mode: :binary]
+  @common_connect_opts [packet: :line, active: :once, mode: :binary]
 
   defp ssl_opts(server, ssl_verify),
     do:
@@ -114,25 +114,14 @@ defmodule Yugo.Client do
 
   @impl true
   def init(args) do
-    conn = %Conn{
-      my_name: args[:name],
-      tls: args[:tls],
-      server: args[:server],
-      username: args[:username],
-      password: args[:password],
-      mailbox: args[:mailbox],
-      ssl_verify: args[:ssl_verify],
-      next_cmd_tag: 1,
-      tag_map: %{},
-      socket: nil
-    }
-    {:ok, conn, {:continue, args}}
+    {:ok, nil, {:continue, args}}
   end
 
   @impl true
   def terminate(_reason, conn) do
-    conn
-    |> send_command("LOGOUT")
+    if conn && conn.socket do
+      send_command(conn, "LOGOUT")
+    end
   end
 
   @impl true
@@ -154,25 +143,30 @@ defmodule Yugo.Client do
   end
 
   @impl true
-  def handle_continue(args, conn) do
+  def handle_continue(args, _state) do
     {:ok, socket} =
       if args[:tls] do
         :ssl.connect(
           args[:server],
           args[:port],
-          ssl_opts(args[:server], args[:ssl_verify])
+          ssl_opts(args[:server], args[:ssl_verify]) ++ [active: false]
         )
       else
         :gen_tcp.connect(args[:server], args[:port], @common_connect_opts)
       end
 
-    conn = %{conn | socket: socket}
+    conn = %Conn{
+      my_name: args[:name],
+      tls: args[:tls],
+      socket: socket,
+      server: args[:server],
+      username: args[:username],
+      password: args[:password],
+      mailbox: args[:mailbox],
+      ssl_verify: args[:ssl_verify]
+    }
 
-    if conn.tls do
-      :ssl.setopts(socket, active: :once)
-    else
-      :inet.setopts(socket, active: :once)
-    end
+    :ssl.setopts(socket, active: :once)
 
     {:noreply, conn}
   end
