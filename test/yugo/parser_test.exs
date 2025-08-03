@@ -102,4 +102,9 @@ defmodule Yugo.ParserTest do
     ] =
       Parser.parse_response("* 1 FETCH (ENVELOPE (NIL NIL NIL NIL NIL NIL NIL NIL NIL NIL))")
   end
+
+  test "parse BYE response" do
+    [server_message: "Server shutting down."] =
+      Parser.parse_response("* BYE Server shutting down.")
+  end
 end

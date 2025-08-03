@@ -521,6 +521,9 @@ defmodule Yugo.Client do
       {:tagged_response, {tag, status, text}} when status in [:bad, :no] ->
         raise "Got `#{status |> to_string() |> String.upcase()}` response status: `#{text}`. Command that caused this response: `#{conn.tag_map[tag].command}`"
 
+      {:server_message, message} ->
+        raise "Server message: #{message}"
+
       :continuation ->
         conn
 

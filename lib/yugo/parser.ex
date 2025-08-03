@@ -125,6 +125,10 @@ defmodule Yugo.Parser do
     end
   end
 
+  defp parse_untagged_with_status(resp, :bye) do
+    [server_message: resp]
+  end
+
   defp parse_untagged_no_status(resp) do
     cond do
       Regex.match?(~r/^CAPABILITY /is, resp) ->
