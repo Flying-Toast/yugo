@@ -102,4 +102,16 @@ defmodule Yugo.ParserTest do
     ] =
       Parser.parse_response("* 1 FETCH (ENVELOPE (NIL NIL NIL NIL NIL NIL NIL NIL NIL NIL))")
   end
+
+  test "parse FETCH response message/rfc822 forwarded email" do
+    # The issue occurs when parsing a multipart message with message/rfc822 parts
+
+    fetch_response =
+      ~S|* 1 FETCH (BODY (("message" "rfc822" NIL NIL NIL "7bit" 16637 ("Thu, 31 Jul 2025 00:00:00 +0000" "SUBJECT" (("Name" NIL "user" "domain.org")) (("Name" NIL "user" "domain.org")) (("Name" NIL "user" "domain.org")) ((NIL NIL "name" "domain.org")) NIL "<67faa4d5-603e-46f8-b25e-877f2e61b173@domain.org>" "<name@domain.org>") (("text" "plain" ("charset" "UTF-8" "format" "flowed") NIL NIL "quoted-printable" 4791 128)("text" "html" ("charset" "UTF-8") NIL NIL "quoted-printable" 7681 173) "alternative") 379) "report"))|
+
+    result = Parser.parse_response(fetch_response)
+
+    # Should not crash and should return a fetch action with multipart body
+    assert [fetch: {1, :body, {:multipart, _parts}}] = result
+  end
 end
