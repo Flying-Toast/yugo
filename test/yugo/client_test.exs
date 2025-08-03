@@ -1,5 +1,5 @@
 defmodule Yugo.ClientTest do
-  use ExUnit.Case, asnc: true
+  use ExUnit.Case, async: true
   doctest Yugo.Client
   import Helpers.Client
 

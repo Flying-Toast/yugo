@@ -82,4 +82,24 @@ defmodule Yugo.ParserTest do
     [fetch: {0, :flags, ["\\Seen", "\\Recent"]}, fetch: {0, :uid, 84}] =
       Parser.parse_response(~S|* 0 fetch (UID 84 FLags (\Seen \Recent))|)
   end
+
+  test "parse FETCH response with nil date" do
+    [
+      fetch:
+        {1, :envelope,
+         %{
+           bcc: [],
+           cc: [],
+           date: nil,
+           from: [],
+           in_reply_to: nil,
+           message_id: nil,
+           reply_to: [],
+           sender: [],
+           subject: nil,
+           to: []
+         }}
+    ] =
+      Parser.parse_response("* 1 FETCH (ENVELOPE (NIL NIL NIL NIL NIL NIL NIL NIL NIL NIL))")
+  end
 end
