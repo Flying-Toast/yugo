@@ -258,6 +258,21 @@ defmodule Yugo.Parser do
     parse_list_aux(rest, parsers, [parser_output | acc], strict?)
   end
 
+  # Handle case where we have more data but no parsers left in lax mode - skip to end of list
+  # This is mostly relevant for body parts of type message/rfc822 i.e. when emails are forwarded.
+  # These body parts have additional fields, like a copy of the original envelope, which we don't parse.
+  defp parse_list_aux(rest, [], acc, :lax) do
+    rest = skip_to_end_of_list(rest, 0)
+    {Enum.reverse(acc), rest}
+  end
+
+  defp skip_to_end_of_list(<<?), rest::binary>>, 0), do: rest
+  defp skip_to_end_of_list(<<?(, rest::binary>>, depth), do: skip_to_end_of_list(rest, depth + 1)
+  defp skip_to_end_of_list(<<?), rest::binary>>, depth), do: skip_to_end_of_list(rest, depth - 1)
+
+  defp skip_to_end_of_list(<<_::binary-size(1), rest::binary>>, depth),
+    do: skip_to_end_of_list(rest, depth)
+
   defp parse_variable_length_list(<<?(, rest::binary>>, parser),
     do: parse_variable_length_list_aux(rest, parser, [])
 
