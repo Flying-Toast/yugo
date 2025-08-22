@@ -347,6 +347,8 @@ defmodule Yugo.Parser do
     {octets, rest}
   end
 
+  defp rfc5322_to_datetime(nil), do: nil
+
   defp rfc5322_to_datetime(string) do
     monthname = ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
 
